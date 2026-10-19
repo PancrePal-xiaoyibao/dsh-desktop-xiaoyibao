@@ -1,0 +1,70 @@
+# ============================================================
+# 小胰宝临床试验订阅系统 - 渠道与流程配置模板
+# ============================================================
+# 用法：复制为 config.yaml 后按需修改。
+#   cp assets/config.yaml.template config.yaml
+#
+# 本文件定义推送渠道的默认开关状态和流程行为。
+# 命令行参数(--send-xxx / --no-channels)会覆盖这里的默认值。
+# 修改此文件即可调整默认行为,无需改代码。
+#
+# ⚠️ 敏感凭据(API key / token)不要写在这里,统一放 .env,
+#    通过下方 api_key_env 字段引用 .env 中的变量名。
+
+# ==================== 推送渠道默认状态 ====================
+# true  = 默认开启(无 --send-* 参数时也推送)
+# false = 默认关闭(需 --send-xxx 显式开启)
+channels:
+  tg: true              # Telegram(汇总+分组详情+footer,保留现有格式)
+  gewe_txt: true        # GeWe 文字(TG 切片格式转纯文本,效果好)
+  gewe_card: false      # GeWe 卡片(appmsg 可跳转卡片,默认关闭)
+  feishu: true          # 飞书(交互式卡片,保留现有格式)
+  fastgpt: true         # FastGPT 知识库(翻译+同步)
+
+# ==================== 流程行为 ====================
+workflow:
+  # 阶段1完成后是否自动落地 JSON(供 RAG 翻译消费)
+  auto_save_json: true
+  # fastgpt 渠道是否自动执行全文翻译(run_rag_translation)再同步
+  fastgpt_translate_first: true
+  # GeWe 文字分批:单条消息长度上限(默认 500，避免微信折叠)
+  gewe_txt_max_len: 500
+
+# ==================== 翻译模型 fallback 链 ====================
+# 顺序即优先级:第 1 个是主力模型,失败时依次尝试后续模型。
+# 每个模型走 OpenAI 兼容协议(统一 base_url + api_key + model)。
+#
+# 字段说明:
+#   name        模型别名(仅用于日志,可任意)
+#   base_url    OpenAI 兼容端点(必须以 /v1 结尾)
+#   model       模型名(对应 base_url 支持的模型)
+#   api_key_env 引用 .env 中的环境变量名(敏感信息不直接写 yaml)
+#               支持单 key(字符串)或多 key(逗号分隔字符串,自动轮换)
+#   timeout     单次请求超时秒数(可选,默认 60)
+#   max_tokens  单次请求最大输出 token(可选,默认不限制)
+#
+# 向后兼容:若此处为空或未配置,自动回退到旧的 LLM_PROVIDER + zhipu_*/gemini_* 变量。
+translate_models:
+  - name: qwen
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    model: qwen3.6-flash
+    api_key_env: QWEN_API_KEY        # .env 里支持逗号分隔多 key 轮换
+    timeout: 60
+
+  - name: glm
+    base_url: https://open.bigmodel.cn/api/paas/v4
+    model: glm-4.5-flash
+    api_key_env: ZHIPU_API_KEY
+    timeout: 60
+
+  - name: stepfun
+    base_url: https://api.stepfun.com/v1
+    model: step-3.7-flash
+    api_key_env: STEP_API_KEY
+    timeout: 60
+
+  - name: gemini
+    base_url: https://ai-proxy.chatwise.app/generativelanguage/v1beta/openai
+    model: gemini-3-flash-preview
+    api_key_env: GEMINI_API_KEY
+    timeout: 60

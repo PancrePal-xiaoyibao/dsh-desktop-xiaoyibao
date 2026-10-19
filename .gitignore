@@ -1,0 +1,84 @@
+# ───────────────────────────────────────────────────────────
+# 编辑器 / Jupyter 产物
+.ipynb_checkpoints/
+
+# ───────────────────────────────────────────────────────────
+# 依赖与构建产物
+#
+# ⚠️ 这里**必须用锚定路径**（前导 / 或 packages/*/），不能用裸 `dist/`。
+# 原因：青囊能力包随包分发的第三方快照里有大量 `*/dist/*.js`（离线依赖，必须入库），
+# 裸 `dist/` 会按目录名匹配到任意层级，把青囊的离线依赖整体忽略掉 — 已实测踩坑。
+#
+/node_modules/
+/packages/*/node_modules/
+/packages/*/dist/
+/packages/*/dist-dev/
+/packages/*/out/
+/packages/*/coverage/
+/dist/
+/dist-dev/
+/out/
+/coverage/
+
+# ⚠️ 例外说明：`packages/dsh-xyb-qingnang/vendor/qingnang/vendor/node_modules/`
+# 必须入库（决定「内置离线依赖」，保证零网络可启动）。
+# 上面的锚定写法已天然不会命中它，此处不需要额外否定规则。
+
+# 本机画像（含本机代理与硬件信息，绝不入库）
+**/HOST_PROFILE.md
+!**/HOST_PROFILE.md.template
+
+# ───────────────────────────────────────────────────────────
+# 环境与凭据
+.env
+.env.*
+!.env.example
+*.p12
+*.pfx
+*.pem
+*.key
+
+# ───────────────────────────────────────────────────────────
+# 系统噪音
+.DS_Store
+*.log
+__pycache__/
+*.pyc
+
+# ───────────────────────────────────────────────────────────
+# vendor 改造回退备份（V-1 的本地回退点）
+# 上游原值可从上游仓库/zip 恢复，因此不入库（避免冗余）
+vendor/.xyb-backup/
+
+# 青囊快照同步时的临时状态
+*.xyb-tmp
+
+# 安装 smoke 输出（verify-install.mjs 在仓库根写入的结果文件）
+/smoke-result.json
+
+# 说明：vendor/ 下的两个上游源都**入库**（主人 2026-10-17 指示「vendor 可以全量上传」）。
+
+# 并行测试 runner 保留的失败日志（闪失败定位用）
+.test-logs/
+
+# 开发中间物：立项文档/CHG/tasks（主人 2026-10-18 指示：不入库）
+# 本地保留，供开发流程使用；发布面向社区的仓库不含开发中间物。
+tasks/
+
+# AI 助手的宿主机画像（agent-reference）：硬件 / 代理 / 环境速查 / 个人偏好。
+# 它是**宿主机级**信息，不属于开源仓内容；本地保留供 agent 读取。
+agent-reference/
+
+# ── 上游参考素材：构建时按锁定 SHA 取回，再应用补丁重放 ──
+# 锁定值与逐文件对账见 patches/host-modifications.manifest.json
+# 重放：node scripts/apply-host-modifications.mjs（会逐文件 sha256 对账）
+# 为什么不入库：9445 个跟踪文件里 9300 多是上游源码，仓库只留我们自己的代码
+vendor/
+
+# ── 依赖库：由 npm install 还原，绝不入库 ──
+node_modules/
+
+# ── codebase 知识图谱的持久化产物：本地缓存，不入库 ──
+# 由 codebase-memory MCP 的 index_repository(persistence: true) 写出；
+# 队友可用同一指令重建，因此它属于「可重建的本地缓存」，不是源码。
+.codebase-memory/

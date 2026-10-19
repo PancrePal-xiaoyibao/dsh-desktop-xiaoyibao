@@ -1,0 +1,105 @@
+name: 依赖安全扫描
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # 每周三 UTC 8:00（北京时间 16:00）自动扫描
+    - cron: "0 8 * * 3"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trivy-frontend:
+    name: Trivy 前端依赖扫描
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - name: 签出代码
+        uses: actions/checkout@v6
+
+      - name: Trivy 漏洞扫描（前端）
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          format: sarif
+          output: trivy-frontend.sarif
+
+      - name: 上传扫描结果到 GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: trivy-frontend.sarif
+          category: trivy-frontend
+
+  trivy-backend:
+    name: Trivy 后端依赖扫描
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - name: 签出代码
+        uses: actions/checkout@v6
+
+      - name: Trivy 漏洞扫描（后端）
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: backend
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          format: sarif
+          output: trivy-backend.sarif
+
+      - name: 上传扫描结果到 GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: trivy-backend.sarif
+          category: trivy-backend
+
+  govulncheck:
+    name: Go 官方漏洞检查
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: 签出代码
+        uses: actions/checkout@v6
+
+      - name: 配置 Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.25.10
+          cache-dependency-path: backend/go.sum
+
+      - name: 输出 Go 版本
+        run: go version
+
+      - name: 同步 Go 模块元数据
+        run: go mod tidy
+
+      - name: 安装 govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: 执行漏洞检查
+        run: govulncheck -show verbose -show traces ./...

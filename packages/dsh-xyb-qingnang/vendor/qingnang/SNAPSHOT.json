@@ -1,0 +1,34 @@
+{
+  "source": "https://github.com/PancrePal-xiaoyibao/QingNang",
+  "commit": "defce7c8f50726dc3872de756b247c068884258d",
+  "packVersion": "0.1.0",
+  "schemaVersion": 1,
+  "syncedAt": "2026-10-15T00:39:23.955Z",
+  "syncedBy": "scripts/sync-qingnang.mjs",
+  "fileCount": 4051,
+  "totalBytes": 43581170,
+  "included": [
+    "scripts",
+    "skills",
+    "mcp-servers/manifest.json",
+    "MANIFEST.json",
+    "LICENSE",
+    "vendor/node_modules"
+  ],
+  "excluded": [
+    "tests",
+    "cache",
+    "data",
+    ".venv",
+    "node_modules",
+    "package-lock.json",
+    ".ipynb_checkpoints",
+    "skills/qingnang/HOST_PROFILE.md",
+    "skills/qingnang/references/private"
+  ],
+  "skipFileNames": [
+    "HOST_PROFILE.md",
+    ".DS_Store"
+  ],
+  "checksum": "0cbd3f1d3445eacd17bd4c5aaec4cbcf"
+}

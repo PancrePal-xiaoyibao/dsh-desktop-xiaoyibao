@@ -1,0 +1,207 @@
+# 胰腺癌临床检索靶点配置（可复用）
+# ============================================================
+# 用途：
+#   - 本项目 ClinicalTrials.gov 抓取默认 KEYWORDS 来源
+#   - 其它项目（月报/RAG/技能包）可直接复制或软链接复用
+#
+# 优先级建议：
+#   1) 环境变量 KEYWORDS（逗号分隔，若设置则覆盖本文件默认展开）
+#   2) 本 YAML 的 targets[*].keywords / aliases
+#
+# 分组：
+#   core  = 通用监测（驱动突变 / 免疫 / DDR 等）
+#   A     = 指南/热点实体瘤靶点
+#   B     = 进阶实体瘤靶点
+#   C     = 白片足够时可补测靶点
+#
+# 字段说明：
+#   id          稳定标识（程序用）
+#   name        展示名
+#   group       core | A | B | C
+#   aliases     文献/登记库常见写法（含同义基因符号）
+#   keywords    写入 query.term 的检索词（默认 = aliases）
+#   cn_name     中文名（可选）
+#   note        备注（可选）
+# ============================================================
+
+version: 1
+disease: "Pancreatic Cancer"
+updated: "2026-07-18"
+
+# 默认展开哪些分组生成 KEYWORDS（可被代码覆盖）
+default_groups: [core, A, B, C]
+
+groups:
+  core:
+    name: 通用监测
+    description: 驱动突变 / 免疫 / DDR 等常监测项
+  A:
+    name: 指南与热点靶点
+    description: EGFR / MET / HER2 / TROP2 / CLDN18.2 / TF 等
+  B:
+    name: 进阶实体瘤靶点
+    description: MSLN / B7-H3 / Nectin-4 / pan-TRK / CDH17 / CEACAM5 / MTAP
+  C:
+    name: 补测靶点
+    description: 白片足够时可考虑补测：MUC1 / FOLR1 / DLL3 / CA125
+
+targets:
+  # ---------- core ----------
+  - id: kras
+    name: KRAS
+    group: core
+    aliases: [KRAS]
+    keywords: [KRAS]
+    cn_name: KRAS 癌基因
+
+  - id: immune
+    name: Immunotherapy
+    group: core
+    aliases: [Immune, Immunotherapy, 免疫, 免疫治疗]
+    keywords: [Immune, Immunotherapy, 免疫, 免疫治疗]
+    cn_name: 免疫治疗
+
+  - id: tp53
+    name: TP53
+    group: core
+    aliases: [TP53]
+    keywords: [TP53]
+    cn_name: TP53
+
+  - id: atm
+    name: ATM
+    group: core
+    aliases: [ATM]
+    keywords: [ATM]
+    cn_name: ATM
+
+  - id: brca
+    name: BRCA
+    group: core
+    aliases: [BRCA, BRCA1, BRCA2]
+    keywords: [BRCA]
+    cn_name: BRCA1/2
+
+  # ---------- A 指南/热点 ----------
+  - id: egfr
+    name: EGFR
+    group: A
+    aliases: [EGFR, ERBB1]
+    keywords: [EGFR]
+    cn_name: 表皮生长因子受体
+
+  - id: met
+    name: C-MET (MET)
+    group: A
+    aliases: [MET, C-MET, c-Met]
+    keywords: [MET, C-MET, c-Met]
+    cn_name: 间充质上皮转化因子
+
+  - id: her2
+    name: HER2 (ERBB2)
+    group: A
+    aliases: [HER2, ERBB2]
+    keywords: [HER2, ERBB2]
+    cn_name: 人表皮生长因子受体2
+
+  - id: trop2
+    name: TROP2
+    group: A
+    aliases: [TROP2, TACSTD2]
+    keywords: [TROP2, TACSTD2]
+    cn_name: 滋养细胞表面抗原2
+
+  - id: cldn18_2
+    name: CLDN18.2
+    group: A
+    aliases: [CLDN18.2, Claudin 18.2, Claudin18.2, CLDN18]
+    keywords: [CLDN18.2, Claudin 18.2, Claudin18.2]
+    cn_name: 紧密连接蛋白18.2
+
+  - id: tf
+    name: Tissue Factor (TF)
+    group: A
+    aliases: [TF, Tissue Factor, F3]
+    keywords: [TF, Tissue Factor]
+    cn_name: 组织因子
+
+  # ---------- B 进阶实体瘤 ----------
+  - id: msln
+    name: MSLN (Mesothelin)
+    group: B
+    aliases: [MSLN, Mesothelin]
+    keywords: [MSLN, Mesothelin]
+    cn_name: 间皮素
+
+  - id: b7h3
+    name: B7-H3 (CD276)
+    group: B
+    aliases: [B7-H3, B7H3, CD276]
+    keywords: [B7H3, B7-H3, CD276]
+    cn_name: B7同源体3
+
+  - id: nectin4
+    name: Nectin-4
+    group: B
+    aliases: [Nectin-4, NECTIN4, PVRL4]
+    keywords: [Nectin-4, NECTIN4, PVRL4]
+    cn_name: 连接蛋白4
+
+  - id: pan_trk
+    name: pan-TRK (NTRK)
+    group: B
+    aliases: [pan-TRK, NTRK, NTRK1, NTRK2, NTRK3]
+    keywords: [NTRK, pan-TRK]
+    cn_name: 泛TRK / NTRK
+
+  - id: cdh17
+    name: CDH17
+    group: B
+    aliases: [CDH17, Cadherin-17]
+    keywords: [CDH17]
+    cn_name: 钙黏蛋白17
+
+  - id: ceacam5
+    name: CEACAM5
+    group: B
+    aliases: [CEACAM5, CEA]
+    keywords: [CEACAM5, CEA]
+    cn_name: 癌胚抗原相关细胞黏附分子5
+    note: CEA-related
+
+  - id: mtap
+    name: MTAP (loss)
+    group: B
+    aliases: [MTAP, MTAP loss, MTAP deletion]
+    keywords: [MTAP]
+    cn_name: 甲硫腺苷磷酸化酶（缺失）
+    note: IHC for loss
+
+  # ---------- C 补测 ----------
+  - id: muc1
+    name: MUC1
+    group: C
+    aliases: [MUC1, Mucin 1]
+    keywords: [MUC1]
+    cn_name: 黏蛋白1
+
+  - id: folr1
+    name: FOLR1
+    group: C
+    aliases: [FOLR1, Folate receptor alpha, Folate receptor]
+    keywords: [FOLR1, Folate receptor]
+    cn_name: 叶酸受体α
+
+  - id: dll3
+    name: DLL3
+    group: C
+    aliases: [DLL3]
+    keywords: [DLL3]
+    cn_name: Delta-like ligand 3
+
+  - id: ca125
+    name: CA125 (MUC16)
+    group: C
+    aliases: [CA125, MUC16]
+    keywords: [CA125, MUC16]
+    cn_name: CA125 / MUC16

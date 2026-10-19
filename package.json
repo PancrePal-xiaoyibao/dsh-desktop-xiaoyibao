@@ -1,0 +1,33 @@
+{
+  "name": "dsh-desktop-xiaoyibao",
+  "version": "0.1.0",
+  "private": true,
+  "description": "小胰宝 —— 胰腺癌患者「病历 → 指标 → 趋势 → 决策依据」闭环工作台（DSH Desktop 工作台插件）",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "fetch:upstream": "node scripts/fetch-upstream.mjs",
+    "test": "bash scripts/test-parallel.sh",
+    "check:syntax": "node scripts/check-syntax.mjs",
+    "check:contract": "node scripts/check-plugin-contract.mjs",
+    "check:integrity": "node scripts/check-plugin-integrity.mjs",
+    "check:vendor": "node scripts/check-vendor-modifications.mjs",
+    "check:sanitization": "node scripts/check-sanitization.mjs",
+    "check:copy": "node scripts/check-copy-compliance.mjs",
+    "check:tokens": "node scripts/check-ui-tokens.mjs"
+  },
+  "//": [
+    "为什么这里必须有 package.json：",
+    "1) 本仓是**只含社区版必需代码**的发行仓，vendor/ 与嵌套 node_modules 已移出版本控制；",
+    "   上游客（CI 与社区开发者）需要一份根清单才能 npm ci。",
+    "2) test/release/public-sync-workflow.test.mjs 曾从 vendor/dsh-desktop-main/node_modules",
+    "   **借**js-yaml（寄生依赖）—— 本地 vendor 在场时绿、CI 干净检出时 MODULE_NOT_FOUND。",
+    "   依赖必须被显式声明，所以 js-yaml 落到 devDependencies。",
+    "3) 故意**不写** \"type\"：保持 .js 仍按 CJS 解析（与既有代码一致，避免改变语义）。"
+  ],
+  "devDependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}

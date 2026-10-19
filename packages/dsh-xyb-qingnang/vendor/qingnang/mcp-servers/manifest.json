@@ -1,0 +1,310 @@
+{
+  "schema_version": 2,
+  "_comment": "青囊 MCP 唯一事实源。所有通道声明都在此，不许在其他地方另维护一份。准入三重门：许可在白名单内 + npm 可达 + 凭据可降级。",
+  "license_whitelist": [
+    "MIT",
+    "Apache-2.0",
+    "ISC",
+    "BSD-3-Clause"
+  ],
+  "servers": [
+    {
+      "id": "web_search",
+      "display_name": "青囊·通用网页搜索",
+      "server_name": "qingnang_web",
+      "package": "open-websearch",
+      "version": "2.2.0",
+      "license": "Apache-2.0",
+      "license_note": "上游仓库 LICENSE 文件为 Apache-2.0；package.json 的 license 字段缺失，以上游 LICENSE 文件为准",
+      "upstream": "https://github.com/Aas-ee/open-webSearch",
+      "channel": 1,
+      "transport": "stdio",
+      "command": [
+        "node",
+        "scripts/qingnang.mjs",
+        "serve",
+        "web_search"
+      ],
+      "env": [
+        {
+          "key": "MODE",
+          "value": "stdio",
+          "required": false,
+          "effect_when_missing": "默认 both，会额外监听 HTTP 3000 端口",
+          "secret": false
+        },
+        {
+          "key": "SEARCH_MODE",
+          "value": "request",
+          "required": false,
+          "effect_when_missing": "auto：可能启用 Playwright（需 Chromium）；强制 request 可完全避开浏览器依赖",
+          "secret": false
+        },
+        {
+          "key": "USE_PROXY",
+          "value_from": "host_profile",
+          "required": false,
+          "secret": false
+        },
+        {
+          "key": "PROXY_URL",
+          "value_from": "host_profile",
+          "required": false,
+          "secret": false
+        }
+      ],
+      "proxy": {
+        "supported": true,
+        "env_keys": [
+          "USE_PROXY",
+          "PROXY_URL"
+        ],
+        "upstream_default": "http://127.0.0.1:7890",
+        "auto_fill_from": "skills/qingnang/HOST_PROFILE.md 的网络/代理 小节",
+        "two_stage_note": "上游 README 明确：安装期代理（npm --proxy，拉包用）与运行期代理（USE_PROXY/PROXY_URL，搜索用）是两件独立的事，必须分两步配"
+      },
+      "degrade_to": "bing_cn",
+      "health": {
+        "kind": "mcp_initialize",
+        "timeout_s": 30
+      },
+      "command_note": "跨平台启动：node scripts/qingnang.mjs serve <id>。只依赖 Node（MCP 本身的必备依赖），Windows / macOS / Linux 通用，无需 WSL 或 Git Bash。支持完全离线启动。",
+      "args": []
+    },
+    {
+      "id": "bing_cn",
+      "display_name": "青囊·中文网页搜索",
+      "server_name": "qingnang_bing",
+      "package": "bing-cn-mcp",
+      "version": "1.0.2",
+      "license": "MIT",
+      "upstream": "https://github.com/yan5236/bing-cn-mcp-server",
+      "channel": 2,
+      "transport": "stdio",
+      "command": [
+        "node",
+        "scripts/qingnang.mjs",
+        "serve",
+        "bing_cn"
+      ],
+      "env": [],
+      "proxy": {
+        "supported": false
+      },
+      "degrade_to": null,
+      "health": {
+        "kind": "mcp_initialize",
+        "timeout_s": 30
+      },
+      "command_note": "跨平台启动：node scripts/qingnang.mjs serve <id>。只依赖 Node（MCP 本身的必备依赖），Windows / macOS / Linux 通用，无需 WSL 或 Git Bash。支持完全离线启动。",
+      "args": []
+    },
+    {
+      "id": "pubmed",
+      "display_name": "青囊·医学文献检索",
+      "server_name": "qingnang_pubmed",
+      "package": "mcp-pubmed-llm-server",
+      "version": "3.0.0",
+      "license": "MIT",
+      "license_note": "上游 repo 标 Apache-2.0，npm 元数据写 MIT（不一致）；两者皆宽松，按 npm 实际分发为准",
+      "upstream": "https://github.com/PancrePal-xiaoyibao/mcp-pubmed-server-pancrpal",
+      "channel": 3,
+      "transport": "stdio",
+      "command": [
+        "node",
+        "scripts/qingnang.mjs",
+        "serve",
+        "pubmed"
+      ],
+      "env": [
+        {
+          "key": "NCBI_API_KEY",
+          "required": false,
+          "effect_when_missing": "限速 3 req/s（个人够用）",
+          "secret": true
+        }
+      ],
+      "proxy": {
+        "supported": false
+      },
+      "degrade_to": null,
+      "health": {
+        "kind": "mcp_initialize",
+        "timeout_s": 30
+      },
+      "command_note": "跨平台启动：node scripts/qingnang.mjs serve <id>。只依赖 Node（MCP 本身的必备依赖），Windows / macOS / Linux 通用，无需 WSL 或 Git Bash。支持完全离线启动。",
+      "args": []
+    },
+    {
+      "id": "openalex",
+      "display_name": "青囊·学术文献（开放获取）",
+      "server_name": "qingnang_openalex",
+      "package": "openalex-mcp-server",
+      "version": "1.0.5",
+      "license": "ISC",
+      "upstream": "https://github.com/SecretRichGarden/openAlex-mcp",
+      "channel": 3,
+      "transport": "stdio",
+      "command": [
+        "node",
+        "scripts/qingnang.mjs",
+        "serve",
+        "openalex"
+      ],
+      "env": [
+        {
+          "key": "OPENALEX_EMAIL",
+          "required": false,
+          "effect_when_missing": "使用共享池，速度较慢；填邮箱可获得更快配额",
+          "secret": true
+        }
+      ],
+      "proxy": {
+        "supported": false
+      },
+      "degrade_to": null,
+      "health": {
+        "kind": "mcp_initialize",
+        "timeout_s": 30
+      },
+      "command_note": "跨平台启动：node scripts/qingnang.mjs serve <id>。只依赖 Node（MCP 本身的必备依赖），Windows / macOS / Linux 通用，无需 WSL 或 Git Bash。支持完全离线启动。",
+      "args": []
+    },
+    {
+      "id": "unified_trial",
+      "display_name": "青囊·临床试验检索",
+      "server_name": "qingnang_trial",
+      "package": "unified-trial-mcp",
+      "version": "0.3.1",
+      "license": "MIT",
+      "upstream": "https://github.com/opencare-skillhub/unified-trial-search-mcp-service",
+      "channel": 4,
+      "transport": "stdio",
+      "command": [
+        "node",
+        "scripts/qingnang.mjs",
+        "serve",
+        "unified_trial"
+      ],
+      "env": [],
+      "proxy": {
+        "supported": false
+      },
+      "degrade_to": null,
+      "health": {
+        "kind": "mcp_initialize",
+        "timeout_s": 30
+      },
+      "command_note": "跨平台启动：node scripts/qingnang.mjs serve <id>。只依赖 Node（MCP 本身的必备依赖），Windows / macOS / Linux 通用，无需 WSL 或 Git Bash。支持完全离线启动。",
+      "args": [
+        "serve"
+      ],
+      "args_note": "实测：unified-trial-mcp 不带子命令时只打印帮助，必须 `serve` 才启动 MCP stdio 服务。"
+    },
+    {
+      "id": "knows",
+      "display_name": "青囊·高级医学证据",
+      "server_name": "qingnang_knows",
+      "package": "@xiaoyibao_npm/knows-mcp-server",
+      "version": "0.2.2",
+      "license": "MIT",
+      "license_note": "npm 元数据声明 MIT；上游 repo 未放 LICENSE 文件。按社区惯例（npm 声明为准）记为 MIT，已在 SOURCES 登记待补文件。",
+      "upstream": "https://github.com/PancrePal-xiaoyibao/MCP-KnowS-AI",
+      "channel": 5,
+      "transport": "stdio",
+      "command": [
+        "node",
+        "scripts/qingnang.mjs",
+        "serve",
+        "knows"
+      ],
+      "command_note": "跨平台启动：node scripts/qingnang.mjs serve <id>。只依赖 Node（MCP 本身的必备依赖），Windows / macOS / Linux 通用，无需 WSL 或 Git Bash。支持完全离线启动。",
+      "args": [],
+      "env": [
+        {
+          "key": "KNOWS_API_KEY",
+          "required": true,
+          "effect_when_missing": "通道不启动 → 自动降级到通道 3（PubMed + OpenAlex），并在回答中明示降级事实",
+          "secret": true
+        },
+        {
+          "key": "KNOWS_API_HOST",
+          "required": true,
+          "effect_when_missing": "与 KEY 成对；缺失时同样降级到通道 3",
+          "secret": false
+        }
+      ],
+      "credential_note": "凭据留空即可。用户需要时自行申请（入口见 README「凭据申请」）。缺凭据不影响任何其他通道。",
+      "proxy": {
+        "supported": false
+      },
+      "degrade_to": "pubmed",
+      "health": {
+        "kind": "mcp_initialize",
+        "timeout_s": 30
+      },
+      "credential_gate": true,
+      "degrade_note": "KnowS 是「高级医学证据」，PubMed 是它的免费子集，所以降级语义成立：缺凭据 → 降 PubMed，并在回答中明示降级事实。"
+    },
+    {
+      "id": "get_biji",
+      "display_name": "青囊·病友经验",
+      "server_name": "qingnang_biji",
+      "package": "get-biji-mcp",
+      "version": "0.1.1",
+      "license": "MIT",
+      "license_note": "npm 元数据声明 MIT；上游双仓库均未放 LICENSE 文件。按社区惯例（npm 声明为准）记为 MIT，已在 SOURCES 登记待补文件。",
+      "upstream": "https://github.com/PancrePal-xiaoyibao/get_biji_mcp",
+      "channel": 6,
+      "transport": "stdio",
+      "command": [
+        "node",
+        "scripts/qingnang.mjs",
+        "serve",
+        "get_biji"
+      ],
+      "command_note": "跨平台启动：node scripts/qingnang.mjs serve <id>。只依赖 Node（MCP 本身的必备依赖），Windows / macOS / Linux 通用，无需 WSL 或 Git Bash。支持完全离线启动。",
+      "args": [],
+      "env": [
+        {
+          "key": "GET_NOTE_API_KEY",
+          "required": true,
+          "effect_when_missing": "通道不启动 → 降级到通道 3（文献）；病友经验类问题明示该通道未启用",
+          "secret": true
+        },
+        {
+          "key": "GET_NOTE_API_BASE_URL",
+          "required": false,
+          "effect_when_missing": "使用默认接入地址",
+          "secret": false
+        },
+        {
+          "key": "GET_NOTE_TOPIC_ID",
+          "required": false,
+          "effect_when_missing": "不限定知识库专题，检索全部可访问内容",
+          "secret": false
+        }
+      ],
+      "proxy": {
+        "supported": false
+      },
+      "degrade_to": null,
+      "health": {
+        "kind": "mcp_initialize",
+        "timeout_s": 30
+      },
+      "credential_gate": true,
+      "credential_note": "凭据留空即可。对应得到笔记（getnote）账号的 API 凭据，用户自行申请。",
+      "degrade_note": "该能力【唯一】——没有任何其他通道提供「病友经验」。刻意【不】把 web_search 当降级目标：未筛选的论坛内容贴上「病友经验」标签有医学风险。缺凭据时正确行为是：明示该通道未启用，而不是拿网页凑。"
+    }
+  ],
+  "reserved": [],
+  "_comment_build": "构建方式：node scripts/qingnang.mjs fetch（JS 侧首选 pnpm、次选 npm、兜底 yarn；Python 侧首选 uv venv、次选 python -m venv、兜底 conda）。见 AGENTS.md §1 降级链铁律。",
+  "_comment_offline": "依赖装好后，全部通道可离线启动（不再走 npx 联网拉包）。",
+  "_comment_reserved_history": "2026-10-14：KnowS 与 get-biji 已按社区惯例（npm 声明 MIT）从 reserved 移入 servers。凭据留空即可运行（KnowS 缺凭据自动降级）。原 reserved 段保留为空，供未来新候选使用。",
+  "_comment_license_convention": "许可判定惯例：优先上游 LICENSE 文件；文件缺失时以 npm 元数据声明为准，并在 license_note 记录差异 + 在 references/SOURCES.md 登记待补。",
+  "_comment_credential_gate": "credential_gate=true 的通道：缺凭据时 doctor/healthcheck 记 ⬜（选填未配，不算失败），不计入 ❌。这是刻意的——凭据是可选的增强，不是可用性门槛。见 AGENTS.md §1.3 降级链。",
+  "_comment_entrypoint": "宿主启动 MCP 的唯一入口是 `node scripts/qingnang.mjs serve <channel-id>`。它跨平台、零额外依赖（Node 是 MCP 的必备运行时）。曾用过 bash 垫片（mcp-servers/launch/*），已废弃——那会让 Windows 必须装 WSL。",
+  "_comment_secret": "env 条目的 secret:true 表示这是「真凭据」（API Key / 邮箱），doctor 的凭据矩阵只列这些。配置项（MODE/USE_PROXY/TOPIC_ID 等）不列，避免噪音。",
+  "_comment_degrade": "degrade_to 的两种合法形态：\n  ① 有目标（如 knows→pubmed）：语义成立，缺凭据时自动降级 + 明示\n  ② null + degrade_note：该能力唯一，无合理降级目标 → 缺凭据时【明示未启用】，绝不用别的通道凑\n禁止：为了「看起来有降级」而随便填一个语义不忠的目标。"
+}

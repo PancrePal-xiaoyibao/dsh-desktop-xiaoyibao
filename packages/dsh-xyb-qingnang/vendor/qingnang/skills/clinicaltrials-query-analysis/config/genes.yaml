@@ -1,0 +1,423 @@
+# 胰腺癌基因配置文件 — 基于 NCCN 指南与临床热点
+# 使用 PyYAML 解析
+# 分组说明：
+#   A=指南推荐 | B=临床热点 | C=进阶实体瘤靶点 | D=补充检测
+
+# ============================================================
+# 月报配置
+# ============================================================
+
+# 月报默认基因列表（覆盖指南推荐+临床热点+进阶靶点+补充检测）
+report_defaults:
+  - kras
+  - claudin18_2
+  - erbb2          # = HER2
+  - mtap
+  - shp2
+  - brca1
+  - brca2
+  - trop2
+  - tf
+  - met
+  - msln
+  - b7h3
+  - nectin4
+  - pan_trk
+  - cdh17
+  - ceacam5
+  - muc1
+  - folr1
+  - dll3
+  - ca125
+
+# 月报时间窗口
+report_window: 30d    # 过去30天滚动窗口
+
+# 技术赛道补充检索。用于覆盖不限于单一基因的实体瘤新机制/新药物。
+# 这些词仍会叠加默认疾病条件：(pancreatic OR "solid tumor")。
+report_track_searches:
+  - id: ras
+    name: RAS 抑制剂赛道
+    search_terms:
+      - "KRAS inhibitor"
+      - "KRAS G12D inhibitor"
+      - "KRAS G12V inhibitor"
+      - "KRAS G12C inhibitor"
+      - "RAS(ON) inhibitor"
+      - "zoldonrasib"
+      - "daraxonrasib"
+      - "RMC-6236"
+      - "RMC-9805"
+      - "VS-7375"
+      - "HRS-4642"
+      - "GFH375"
+  - id: adc
+    name: ADC 药物赛道
+    search_terms:
+      - "antibody drug conjugate pancreatic"
+      - "ADC solid tumor pancreatic"
+      - "TROP2 ADC"
+      - "Tissue Factor ADC"
+      - "Nectin-4 ADC"
+      - "B7-H3 ADC"
+      - "CLDN18.2 ADC"
+      - "CEACAM5 ADC"
+      - "CDH17 ADC"
+  - id: immune
+    name: 免疫治疗赛道
+    search_terms:
+      - "pancreatic cancer immunotherapy"
+      - "KRAS vaccine"
+      - "KRAS TCR"
+      - "TCR-T KRAS"
+      - "CAR-T pancreatic"
+      - "MSLN CAR-T"
+      - "B7-H3 CAR-T"
+      - "neoantigen vaccine pancreatic"
+      - "mRNA vaccine pancreatic"
+  - id: ddr
+    name: DDR 靶向赛道
+    search_terms:
+      - "PARP inhibitor pancreatic"
+      - "ATR inhibitor pancreatic"
+      - "ATM deficient solid tumor"
+      - "BRCA mutation pancreatic"
+      - "HRD pancreatic"
+      - "DNA damage response pancreatic"
+      - "tuvusertib"
+      - "elimusertib"
+      - "ceralasertib"
+  - id: protac
+    name: PROTAC 降解剂赛道
+    search_terms:
+      - "ASP3082"
+      - "ASP-3082"
+      - "KRAS degrader"
+      - "KRAS G12D degrader"
+      - "PROTAC KRAS"
+      - "PROTAC pancreatic"
+      - "targeted protein degrader"
+      - "protein degrader solid tumor"
+      - "molecular glue solid tumor"
+      - "ARV-806"
+  - id: shp2
+    name: SHP2 抑制剂赛道
+    search_terms:
+      - "SHP2 inhibitor"
+      - "PTPN11 inhibitor"
+      - "SHP2 KRAS"
+      - "TNO155"
+      - "RMC-4630"
+      - "PF-07284892"
+      - "JAB-3312"
+
+# 月报 LLM 配置（用于深度分析段落生成）
+# provider: 当前主 provider
+# fallback: provider fallback 顺序（按优先级），主 provider 失败时自动切换
+# 可选: custom(自定义, 如 siliconflow) | stepfun | dashscope
+#   custom    = 从 .env 读取 LLM_API_KEY/LLM_BASE_URL/LLM_MODEL
+#   stepfun   = 从 .env 读取 STEP_API_KEY/STEP_BASE_URL/STEP_MODEL
+#   dashscope = 从 .env 读取 DASHSCOPE_API_KEY/DASHSCOPE_URL/DASHSCOPE_MODEL
+llm:
+  provider: custom                      # 主 provider (SiliconFlow LongCat 速度较快)
+  fallback: ["custom", "dashscope"]     # fallback 顺序（stepfun 测速空响应，暂不默认启用）
+  temperature: 0.4                     # 生成温度
+  max_tokens: 4000                     # 单次最大输出 token
+  concurrency: 4                       # LLM 分析并发数（1-8）
+  timeout: 60                          # 单次 provider 超时秒数（15-180）
+  providers:
+    custom:
+      api_key_env: LLM_API_KEY
+      base_url_env: LLM_BASE_URL
+      model_env: LLM_MODEL
+      model_default: meituan-longcat/LongCat-2.0
+    stepfun:
+      api_key_env: STEP_API_KEY
+      base_url_env: STEP_BASE_URL
+      model_env: STEP_MODEL
+      model_default: step-3.7-flash
+    dashscope:
+      api_key_env: DASHSCOPE_API_KEY
+      base_url_env: DASHSCOPE_URL           # 从 .env 读取，回退到默认值
+      base_url_default: https://dashscope.aliyuncs.com/compatible-mode/v1
+      model_env: DASHSCOPE_MODEL
+      model_default: qwen-turbo
+
+
+# ============================================================
+# 基因定义
+# ============================================================
+genes:
+  # ===== A组：指南推荐（12项）=====
+  - id: egfr
+    name: EGFR
+    category: guideline
+    aliases: [EGFR, ERBB1]
+    search_terms: ["EGFR pancreatic", "ERBB1 pancreatic"]
+    nccn_section: "靶点治疗"
+    report: false
+    cn_name: "表皮生长因子受体"
+    cn_desc: "促进细胞增殖的受体，靶向药有厄洛替尼等"
+
+  - id: kras
+    name: KRAS
+    category: guideline
+    aliases: [KRAS G12D, KRAS G12V, KRAS G12C, KRAS G12R, KRAS G12A, KRAS G13D, KRAS Q61H, KRAS]
+    search_terms: ["KRAS G12D", "KRAS G12V", "KRAS G12C", "KRAS G12R", "KRAS pancreatic"]
+    nccn_section: "靶点治疗"
+    report: true
+    cn_name: "KRAS 癌基因"
+    cn_desc: "胰腺癌最常见的驱动突变（>90%），G12D/G12V 是主要亚型"
+
+  - id: erbb2
+    name: HER2 (ERBB2)
+    category: guideline
+    aliases: [HER2, ERBB2]
+    search_terms: ["HER2 pancreatic", "ERBB2 pancreatic"]
+    nccn_section: "靶点治疗"
+    report: true
+    cn_name: "人表皮生长因子受体2"
+    cn_desc: "约5-10%胰腺癌过表达，可用曲妥珠单抗等"
+
+  - id: trop2
+    name: TROP2
+    category: guideline
+    aliases: [TROP2, TACSTD2]
+    search_terms: ["TROP2 pancreatic", "sacituzumab"]
+    nccn_section: "ADC药物靶点"
+    report: true
+    cn_name: "滋养细胞表面抗原2"
+    cn_desc: "ADC药物热门靶点，如 Sacituzumab govitecan"
+
+  - id: claudin18_2
+    name: CLDN18.2
+    category: guideline
+    aliases: [CLDN18.2, Claudin 18.2, CLDN18]
+    search_terms: ["CLDN18.2 pancreatic", "Claudin 18.2", "zolbetuximab"]
+    nccn_section: "靶点治疗"
+    report: true
+    cn_name: "紧密连接蛋白18.2"
+    cn_desc: "胰腺癌高表达靶点，Zolbetuximab 已获批"
+
+  - id: brca1
+    name: BRCA1
+    category: guideline
+    aliases: [BRCA1]
+    search_terms: ["BRCA1 pancreatic", "BRCA mutation pancreatic"]
+    nccn_section: "DNA损伤修复"
+    report: true
+    cn_name: "乳腺癌易感基因1"
+    cn_desc: "同源重组修复基因，可用 PARP 抑制剂（奥拉帕利）"
+
+  - id: brca2
+    name: BRCA2
+    category: guideline
+    aliases: [BRCA2]
+    search_terms: ["BRCA2 pancreatic", "BRCA mutation pancreatic"]
+    nccn_section: "DNA损伤修复"
+    report: true
+    cn_name: "乳腺癌易感基因2"
+    cn_desc: "胰腺癌胚系突变最常见 DDR 基因，PARP 抑制剂适用"
+
+  - id: atm
+    name: ATM
+    category: guideline
+    aliases: [ATM]
+    search_terms: ["ATM mutation pancreatic", "ATM deficiency"]
+    nccn_section: "DNA损伤修复"
+    report: false
+    cn_name: "ATM丝氨酸/苏氨酸激酶"
+    cn_desc: "DDR 通路基因，合成致死策略（ATR抑制剂）靶点"
+
+  - id: braf
+    name: BRAF V600E
+    category: guideline
+    aliases: [BRAF V600E, BRAF]
+    search_terms: ["BRAF V600E pancreatic"]
+    nccn_section: "靶点治疗"
+    report: false
+    cn_name: "BRAF V600E突变"
+    cn_desc: "可用达拉非尼+曲美替尼联合方案"
+
+  - id: ntrk
+    name: NTRK
+    category: guideline
+    aliases: [NTRK1, NTRK2, NTRK3, NTRK fusion]
+    search_terms: ["NTRK fusion pancreatic", "pan-TRK", "larotrectinib", "entrectinib"]
+    nccn_section: "靶点治疗"
+    report: false
+    cn_name: "神经营养因子受体酪氨酸激酶"
+    cn_desc: "融合基因，可用拉罗替尼/恩曲替尼"
+
+  - id: nrg1
+    name: NRG1
+    category: guideline
+    aliases: [NRG1, NRG1 fusion]
+    search_terms: ["NRG1 fusion pancreatic", "zenocutuzumab"]
+    nccn_section: "靶点治疗"
+    report: false
+    cn_name: "神经调节蛋白1"
+    cn_desc: "融合基因，Zenocutuzumab 在研"
+
+  - id: ret
+    name: RET
+    category: guideline
+    aliases: [RET]
+    search_terms: ["RET fusion pancreatic", "selpercatinib"]
+    nccn_section: "靶点治疗"
+    report: false
+    cn_name: "RET原癌基因"
+    cn_desc: "融合基因，可用塞普替尼"
+
+  - id: fgfr
+    name: FGFR
+    category: guideline
+    aliases: [FGFR1, FGFR2, FGFR3, FGFR4]
+    search_terms: ["FGFR2 fusion pancreatic", "futibatinib", "pemigatinib"]
+    nccn_section: "靶点治疗"
+    report: false
+    cn_name: "成纤维细胞生长因子受体"
+    cn_desc: "融合/突变，可用佩米替尼等"
+
+  # ===== B组：临床热点（3项）=====
+  - id: shp2
+    name: SHP2
+    category: hotspot
+    aliases: [SHP2, PTPN11, SH-PTP2]
+    search_terms: ["SHP2 inhibitor pancreatic", "PTPN11", "TNO155", "RMC-4630"]
+    nccn_section: "靶点治疗"
+    report: true
+    cn_name: "含SH2结构域蛋白酪氨酸磷酸酶2"
+    cn_desc: "RAS/MAPK 通路关键调控点，联合 KRAS 抑制剂策略"
+
+  - id: met
+    name: C-MET (MET)
+    category: hotspot
+    aliases: [MET, C-MET, c-Met]
+    search_terms: ["MET pancreatic", "c-MET", "telisotuzumab"]
+    nccn_section: "靶点治疗"
+    report: true
+    cn_name: "间充质上皮转化因子"
+    cn_desc: "过表达/扩增，ADC和激酶抑制剂在研"
+
+  - id: tf
+    name: Tissue Factor (TF)
+    category: hotspot
+    aliases: [TF, Tissue Factor, F3]
+    search_terms: ["Tissue Factor pancreatic", "tisotumab"]
+    nccn_section: "ADC药物靶点"
+    report: true
+    cn_name: "组织因子"
+    cn_desc: "ADC靶点，如 Tisotumab vedotin"
+
+  # ===== C组：进阶实体瘤靶点（7项）=====
+  - id: msln
+    name: MSLN (Mesothelin)
+    category: advanced
+    aliases: [MSLN, Mesothelin]
+    search_terms: ["Mesothelin pancreatic", "MSLN", "anetumab"]
+    nccn_section: "免疫治疗靶点"
+    report: true
+    cn_name: "间皮素"
+    cn_desc: "CAR-T和ADC热门靶点，胰腺癌高表达"
+
+  - id: b7h3
+    name: B7-H3 (CD276)
+    category: advanced
+    aliases: [B7-H3, CD276]
+    search_terms: ["B7-H3 pancreatic", "CD276"]
+    nccn_section: "免疫治疗靶点"
+    report: true
+    cn_name: "B7同源体3"
+    cn_desc: "免疫检查点分子，ADC和CAR-T在研"
+
+  - id: nectin4
+    name: Nectin-4
+    category: advanced
+    aliases: [Nectin-4, NECTIN4, PVRL4]
+    search_terms: ["Nectin-4 pancreatic", "enfortumab"]
+    nccn_section: "ADC药物靶点"
+    report: true
+    cn_name: "连接蛋白4"
+    cn_desc: "ADC靶点，如 Enfortumab vedotin"
+
+  - id: pan_trk
+    name: pan-TRK
+    category: advanced
+    aliases: [pan-TRK, TRK, NTRK]
+    search_terms: ["pan-TRK pancreatic", "TRK inhibitor"]
+    nccn_section: "靶点治疗"
+    report: true
+    cn_name: "泛TRK"
+    cn_desc: "覆盖NTRK1/2/3融合，广谱TRK抑制剂适用"
+
+  - id: cdh17
+    name: CDH17
+    category: advanced
+    aliases: [CDH17, Cadherin-17]
+    search_terms: ["CDH17 pancreatic", "Cadherin-17"]
+    nccn_section: "靶点治疗"
+    report: true
+    cn_name: "钙黏蛋白17"
+    cn_desc: "胃肠道肿瘤标志物，ADC在研"
+
+  - id: ceacam5
+    name: CEACAM5
+    category: advanced
+    aliases: [CEACAM5, CEA, CEACAM5]
+    search_terms: ["CEACAM5 pancreatic", "tusamitamab"]
+    nccn_section: "ADC药物靶点"
+    report: true
+    cn_name: "癌胚抗原相关细胞黏附分子5"
+    cn_desc: "ADC靶点，如 Tusamitamab ravtansine"
+
+  - id: mtap
+    name: MTAP (loss)
+    category: advanced
+    aliases: [MTAP, MTAP loss, MTAP deletion]
+    search_terms: ["MTAP loss pancreatic", "MTAP deletion", "MTAP deficiency"]
+    nccn_section: "表观遗传靶点"
+    report: true
+    cn_name: "甲硫腺苷磷酸化酶（缺失）"
+    cn_desc: "缺失提示对 MAT2A/PRMT5 抑制剂敏感"
+
+  # ===== D组：补充检测（4项，纳入月报）=====
+  - id: muc1
+    name: MUC1
+    category: supplementary
+    aliases: [MUC1, Mucin 1]
+    search_terms: ["MUC1 pancreatic"]
+    nccn_section: "免疫治疗靶点"
+    report: true
+    cn_name: "黏蛋白1"
+    cn_desc: "过表达糖蛋白，CAR-T和疫苗在研"
+
+  - id: folr1
+    name: FOLR1
+    category: supplementary
+    aliases: [FOLR1, Folate receptor alpha]
+    search_terms: ["FOLR1 pancreatic", "Folate receptor alpha"]
+    nccn_section: "ADC药物靶点"
+    report: true
+    cn_name: "叶酸受体α"
+    cn_desc: "ADC靶点，如 Mirvetuximab soravtansine"
+
+  - id: dll3
+    name: DLL3
+    category: supplementary
+    aliases: [DLL3, Delta-like ligand 3]
+    search_terms: ["DLL3 pancreatic"]
+    nccn_section: "免疫治疗靶点"
+    report: true
+    cn_name: "Delta样配体3"
+    cn_desc: "神经内分泌肿瘤标志，ADC和CAR-T在研"
+
+  - id: ca125
+    name: CA125 (MUC16)
+    category: supplementary
+    aliases: [CA125, MUC16]
+    search_terms: ["CA125 pancreatic", "MUC16"]
+    nccn_section: "肿瘤标志物"
+    report: true
+    cn_name: "糖类抗原125"
+    cn_desc: "血清标志物，监测治疗反应"

@@ -1,0 +1,56 @@
+{
+  "name": "dsh-xyb-workbench",
+  "version": "0.1.0",
+  "description": "小胰宝 — 胰腺癌患者全程管理工作台（DSH Desktop 插件）。数据默认留在本机。",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PancrePal-xiaoyibao/dsh-desktop-xiaoyibao.git",
+    "directory": "packages/dsh-xyb-workbench"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "dsh-desktop",
+    "workbench",
+    "xiaoyibao",
+    "pancreatic-cancer"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "dsh-desktop-workbenches",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-primitives"
+      ],
+      "platform": "web"
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.2"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-client-connection": "^0.1.2-rc.1 || ^0.1.7-rc.1 || ^0.1.7-rc.2 || ^0.2.0-rc.1"
+  }
+}

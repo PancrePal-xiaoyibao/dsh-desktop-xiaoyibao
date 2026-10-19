@@ -1,0 +1,48 @@
+{
+  "name": "dsh-xyb-branding",
+  "version": "0.1.0",
+  "description": "小胰宝社区版品牌层：双 logo（DSH Desktop + 社区小胰宝）与关于页品牌合规扩展。",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PancrePal-xiaoyibao/dsh-desktop-xiaoyibao.git",
+    "directory": "packages/dsh-xyb-branding"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "dsh-desktop",
+    "branding",
+    "xyb",
+    "xiaoyibao"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-primitives"
+      ],
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-client-connection": "^0.1.2-rc.1 || ^0.1.7-rc.1 || ^0.1.7-rc.2 || ^0.2.0-rc.1"
+  }
+}

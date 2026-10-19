@@ -1,0 +1,63 @@
+version: 2
+updates:
+  # npm 依赖更新
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - automated
+    # 将补丁版本更新合并为一个 PR
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+        patterns:
+          - "*"
+        exclude-patterns:
+          - next
+          - react
+          - react-dom
+      # Next.js 和 React 单独更新
+      next-ecosystem:
+        patterns:
+          - next
+          - eslint-config-next
+      react-ecosystem:
+        patterns:
+          - react
+          - react-dom
+          - "@types/react"
+          - "@types/react-dom"
+
+  # Go 后端依赖更新
+  - package-ecosystem: gomod
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - backend
+
+  # GitHub Actions 版本更新
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci

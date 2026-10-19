@@ -1,0 +1,23 @@
+{
+  "baseline": "115a0b474cc2c4794316171c640a8898398591fe",
+  "upstreamVersion": "v0.11.1",
+  "hostRoot": "vendor/dsh-desktop-main",
+  "hashNote": "文本按 LF 归一化后取 sha256；二进制按原始字节",
+  "files": {
+    "build/dsh-desktop.patch.yml": "4f843c0f7b342a27",
+    "package.json": "3d654e55bd0a51f7",
+    "electron-builder.dev.cjs": "a635aaf8d295cf07",
+    ".gitignore": "3f36b64aa15ee7c9",
+    "scripts/office-runtime/lock.json": "0e430142612f6b21",
+    "scripts/office-runtime/prepare.mjs": "eddcf00e2e0db8b5",
+    "src/main/update/update-manager.ts": "3bee922dd3cc5742",
+    "src/main/desktop-service/index.ts": "5b04e813c2797c0c"
+  },
+  "assets": {
+    "build/icon.icns": "ce23c0310d1f2adf",
+    "build/icon.ico": "a1a6b1d6ef6b1792",
+    "build/icon.png": "d6f46bdb81f2a9ba",
+    "build/app-icon.png": "d6f46bdb81f2a9ba",
+    "build/xyb/": "4 个文件"
+  }
+}

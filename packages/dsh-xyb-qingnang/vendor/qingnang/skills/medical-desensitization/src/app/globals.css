@@ -1,0 +1,50 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-cream-50: #fdfcf9;
+  --color-cream-100: #f9f6f0;
+  --color-cream-200: #f2ede0;
+  --color-teal-600: #0d9488;
+  --color-teal-700: #0f766e;
+  --color-teal-50: #f0fdfa;
+}
+
+:root {
+  --foreground-rgb: 41, 37, 36;
+  /* stone-900 */
+}
+
+/* Ensure full height for mobile */
+html,
+body {
+  height: 100%;
+  overscroll-behavior: none;
+  background-color: #fdfcf9;
+  /* cream-50 */
+  color: #292524;
+  /* stone-900 */
+}
+
+body {
+  background: linear-gradient(180deg, #fdfcf9 0%, #f9f6f0 100%);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Custom scrollbar for a cleaner look */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e2e2e2;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #d1d1d1;
+}

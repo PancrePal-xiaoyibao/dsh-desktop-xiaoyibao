@@ -1,0 +1,604 @@
+name: Release
+
+# SPEC ADR-701 / ADR-705：发布流水线（目标平台构建 + 安装 smoke + 发布）
+#
+# 与 ci.yml 的分工：
+# ci.yml 日常检查（Linux runner，分钟级，push/PR 触发）
+# release.yml 正式发布（目标平台 runner，tag 或手动触发）
+#
+# ⚠️ 本文件的关键参数**全部对齐上游已实测可用的 release.yml**（不是猜的）：
+# · runner 标签：macos-15 / macos-15-intel / windows-2022（上游实测）
+# · 依赖安装：**npm ci（不带 --ignore-scripts）** —— postinstall 会跑
+# patch-package + install-brand-assets + install-electron，
+# 少了它 electron 二进制不会安装 → verify-target 必然失败
+# · 调用 electron-builder：npx --no-install（避免联网装包）
+# · Windows 打包：走 scripts/electron-builder-windows.mjs（上游的适配器）
+#
+# 门控（ADR-705）：
+# · release 通道要求双平台 smoke 都通过
+# · smoke 失败 → 阻断发布（C-707）
+# · 无签名证书时**显式降级**为未签名并在索引中标注（ADR-706）
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: '发布通道：prerelease（内测）或 release（正式）'
+        required: false
+        default: prerelease
+        type: choice
+        options:
+          - prerelease
+          - release
+      target:
+        description: '目标平台'
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - macos
+          - windows
+          - linux
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # 宿主包所在目录（本仓库的 vendor 副本）
+  DESKTOP_DIR: vendor/dsh-desktop-main
+
+jobs:
+  # ─────────────────────────────────────────── 输入与 tag 校验
+  guard:
+    name: 校验输入与 tag
+    runs-on: ubuntu-24.04
+    outputs:
+      channel: ${{ steps.resolve.outputs.channel }}
+      target: ${{ steps.resolve.outputs.target }}
+      version: ${{ steps.resolve.outputs.version }}
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 解析输入
+        id: resolve
+        env:
+          INPUT_CHANNEL: ${{ inputs.channel }}
+          INPUT_TARGET: ${{ inputs.target }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            # tag 触发 → 正式通道，双平台，tag 即发布 tag
+            echo "channel=release" >> "$GITHUB_OUTPUT"
+            echo "target=all" >> "$GITHUB_OUTPUT"
+            echo "version=${REF_NAME#v}" >> "$GITHUB_OUTPUT"
+            echo "release_tag=${REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            # 手动触发 → 预发布通道；生成不冲突的 tag，**直接发布**（内测要能下载）
+            CH="${INPUT_CHANNEL:-prerelease}"
+            STAMP="$(date -u +%Y%m%d-%H%M%S)"
+            echo "channel=${CH}" >> "$GITHUB_OUTPUT"
+            echo "target=${INPUT_TARGET:-all}" >> "$GITHUB_OUTPUT"
+            echo "version=0.0.0-rc.${STAMP}" >> "$GITHUB_OUTPUT"
+            echo "release_tag=prerelease-${STAMP}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: release 通道必须双平台（ADR-705）
+        env:
+          CHANNEL: ${{ steps.resolve.outputs.channel }}
+          TARGET: ${{ steps.resolve.outputs.target }}
+        run: |
+          set -euo pipefail
+          if [ "$CHANNEL" = "release" ] && [ "$TARGET" != "all" ]; then
+            echo "::error::release 通道要求 target=all（需两个平台的 smoke 都通过）"
+            exit 1
+          fi
+          echo "通道与目标校验通过：channel=$CHANNEL target=$TARGET"
+
+      - name: 记录版本
+        run: echo "版本：${{ steps.resolve.outputs.version }}"
+
+  # ─────────────────────────────────────────── macOS 构建（矩阵：arm64 + x64）
+  macos:
+    name: macOS 构建（${{ matrix.arch }}）
+    needs: guard
+    if: needs.guard.outputs.target == 'all' || needs.guard.outputs.target == 'macos'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 标签对齐上游实测（macos-15 / macos-15-intel）
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # ：本仓已**不含 vendor/**（上游源码移出版本控制；MIT 只要求保留版权声明，
+      # 见 THIRD-PARTY-NOTICES.md / UPSTREAM-SOURCES.md）。构建前必须取回上游并重放
+      # 我们的受控改造 —— 缺这一步会因 vendor/dsh-desktop-main 不存在而直接失败。
+      #
+      # ⚠️ 必须插在 setup-node **之前**：下面的 cache-dependency-path 指向
+      # vendor/dsh-desktop-main/package-lock.json，该文件要等取回后才存在。
+      - name: 取回上游宿主并重放改造
+        run: node scripts/fetch-upstream.mjs
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vendor/dsh-desktop-main/package-lock.json
+
+      # ⚠️ 关键：**不加 --ignore-scripts**。
+      # postinstall = patch-package + install-brand-assets + install-electron
+      # 少了它 electron 二进制不会装 → verify-target 必然失败（实测过）
+      - name: 安装宿主依赖（含 postinstall）
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: npm ci
+
+      - name: 就位社区版插件（保险：files 映射为主，这一步保证 node_modules 也有）
+        run: node scripts/prepare-vendor-plugins.mjs
+
+      - name: 设置版本号
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: npm version --no-git-tag-version --allow-same-version "${{ needs.guard.outputs.version }}"
+
+      - name: 目标平台校验（verify-target 会拒绝宿主/目标不匹配）
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: node scripts/verify-target.mjs darwin ${{ matrix.arch }}
+
+      - name: 构建
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: npm run build
+
+      - name: 打包（未签名）
+        working-directory: ${{ env.DESKTOP_DIR }}
+        env:
+          # 未签名：禁止 electron-builder 自动寻找签名身份
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx --no-install electron-builder --mac --${{ matrix.arch }} --publish never
+
+      - name: 收集产物（含 .blockmap 与更新元数据，对齐上游）
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: node ../../scripts/collect-release-assets.mjs --from dist --to ../release-out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: vendor/release-out/*
+          retention-days: 7
+
+  # ─────────────────────────────────────────── Windows 构建（未签名）
+  windows:
+    name: Windows 构建（x64）
+    needs: guard
+    if: needs.guard.outputs.target == 'all' || needs.guard.outputs.target == 'windows'
+    strategy:
+      fail-fast: false
+      matrix:
+        # 只出 x64：arm64 需要上游 verify-target 安全门放行 win32/arm64，
+        # 那属「动安全门」，按项目规矩需专项授权与说明，暂不纳入。
+        # 安装版（setup.exe）+ 免安装版（portable.zip）都会出。
+        arch: [x64]
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      # ：取回上游 + 重放改造（理由同 macos job）。
+      # ⚠️ 必须插在 setup-node 之前（cache-dependency-path 指向取回后才存在的 lockfile）。
+      - name: 取回上游宿主并重放改造
+        run: node scripts/fetch-upstream.mjs
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vendor/dsh-desktop-main/package-lock.json
+
+      - name: 安装宿主依赖（含 postinstall）
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: npm ci
+
+      - name: 就位社区版插件
+        run: node scripts/prepare-vendor-plugins.mjs
+
+      - name: 设置版本号
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: npm version --no-git-tag-version --allow-same-version "${{ needs.guard.outputs.version }}"
+
+      - name: 目标平台校验（**必须在 Windows 上打包**，C-701）
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: node scripts/verify-target.mjs win32 x64
+
+      - name: 构建
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: npm run build
+
+      - name: 打包（未签名）
+        working-directory: ${{ env.DESKTOP_DIR }}
+        # 上游的 Windows 适配器（安装目录选择器等），比直接调 electron-builder 稳
+        run: node scripts/electron-builder-windows.mjs --win --x64 --publish never
+
+      - name: 收集产物（含 .blockmap 与更新元数据，对齐上游）
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: node ../../scripts/collect-release-assets.mjs --from dist --to ../release-out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: vendor/release-out/*
+          retention-days: 7
+
+  # ─────────────────────────────────────────── Linux 构建（未签名 · 社区实验性）
+  #
+  # 目标：统信 UOS / 麒麟等 **Debian 系**用 deb；其它发行版用 AppImage。
+  # ⚠️ 定位为「社区实验性支持」：本项目的已验证平台是 macOS / Windows，
+  #    Linux 侧未做安装冒烟（无头环境下启动 Electron 需 xvfb，另属一项工作）。
+  linux:
+    name: Linux 构建（${{ matrix.arch }}）
+    needs: guard
+    if: needs.guard.outputs.target == 'all' || needs.guard.outputs.target == 'linux'
+    # ⚠️ 尽力而为（best effort）：Linux 是社区实验性支持，
+    #   失败不得拖垮 macOS/Windows 的发布（index 的门控只看 macos/windows）。
+    #   代价与界限：它红了代表「这次没出 Linux 包」，不代表产品不可发。
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        # arm64：信创主力机型（鲲鹏 / 飞腾）是 ARM —— UOS/麒麟 的 arm64 才是真需求
+        arch: [x64, arm64]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # 取回上游 + 重放改造（理由同 macos job；必须在 setup-node 之前）
+      - name: 取回上游宿主并重放改造
+        run: node scripts/fetch-upstream.mjs
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vendor/dsh-desktop-main/package-lock.json
+
+      - name: 安装宿主依赖（含 postinstall）
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: npm ci
+
+      - name: 就位社区版插件
+        run: node scripts/prepare-vendor-plugins.mjs
+
+      - name: 设置版本号
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: npm version --no-git-tag-version --allow-same-version "${{ needs.guard.outputs.version }}"
+
+      # ⚠️ 跳过 office 运行时：上游 scripts/office-runtime/lock.json 只有
+      #   mac-arm64 / mac-x64 / win-x64 / win-arm64，没有 linux 目标 →
+      #   npm run office:prepare 会直接抛 "unsupported native target linux/x64"。
+      #   因此 Linux 版不内置 office/PPT 运行时（功能边界见 docs/KNOWN-LIMITATIONS.md）。
+      - name: 构建（跳过 office 运行时）
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: npm run ppt:build && npx --no-install electron-vite build
+
+      - name: 打包（deb + rpm + AppImage + tar.gz，未签名）
+        working-directory: ${{ env.DESKTOP_DIR }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        # 用 CLI 覆盖，不去改宿主 package.json（那需要重新生成补丁 + 逐文件对账）
+        #
+        # ── 统信 UOS / 麒麟等国产发行版的覆盖面（关键在依赖声明）──
+        # · deb 依赖**只列包名、不写版本下限**：
+        #   electron-builder 默认会写 libasound2 (>= 1.0.16) 这类下限，
+        #   而 UOS 20 基线是 Debian 10 —— 「dpkg -i 报依赖不满足」多数来自这里。
+        #   缺哪个库由 apt -f install 补齐，覆盖面最大。
+        # · 只保留 Chromium/Electron 运行时真正需要的 11 个库，不引入新版独占包名
+        #   （例如 Ubuntu 24.04 的 libasound2t64 在 Debian 10 上不存在）。
+        # · 同时出 AppImage 与 tar.gz 作兜底：deb/rpm 都装不上时，
+        #   AppImage 单文件直跑、tar.gz 解压即用。
+        # · 格式矩阵：
+        #   deb   → 统信 UOS、deepin、麒麟（Debian 系）、Ubuntu
+        #   rpm   → 麒麟 V10（RPM 系）、openUOS/openEuler、Fedora/RHEL 系
+        #   AppImage / tar.gz → 发行版无关，作为兜底
+        # 覆盖：统信 UOS 20/25、deepin、麒麟 V10、openEuler（deb + rpm），x86_64 与 aarch64 双架构。
+        run: npx --no-install electron-builder --linux deb rpm AppImage tar.gz --${{ matrix.arch }} --publish never -c.linux.category=Utility -c.deb.priority=optional -c.deb.depends=libgtk-3-0 -c.deb.depends=libnotify4 -c.deb.depends=libnss3 -c.deb.depends=libxss1 -c.deb.depends=libxtst6 -c.deb.depends=xdg-utils -c.deb.depends=libatspi2.0-0 -c.deb.depends=libuuid1 -c.deb.depends=libsecret-1-0 -c.deb.depends=libgbm1 -c.deb.depends=libasound2
+
+      - name: 收集产物（含 .blockmap 与更新元数据）
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: node ../../scripts/collect-release-assets.mjs --from dist --to ../release-out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: vendor/release-out/*
+          retention-days: 7
+
+  # ─────────────────────────────────────────── 安装 smoke（macOS）
+  smoke-macos:
+    name: 安装 smoke（macOS · 校验首屏）
+    needs: [guard, macos]
+    if: needs.guard.outputs.target == 'all' || needs.guard.outputs.target == 'macos'
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-arm64
+          path: artifacts
+
+      - name: 安装并校验首屏（**关键：验证打开就是小胰宝**）
+        run: node scripts/verify-install.mjs --platform macos --artifacts artifacts
+
+      - name: 留存 smoke 结果
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-macos-result
+          path: smoke-result.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  # ─────────────────────────────────────────── 安装 smoke（Windows）
+  smoke-windows:
+    name: 安装 smoke（Windows · 校验首屏）
+    needs: [guard, windows]
+    if: needs.guard.outputs.target == 'all' || needs.guard.outputs.target == 'windows'
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-x64
+          path: artifacts
+
+      - name: 安装并校验首屏（**关键：验证打开就是小胰宝**）
+        run: node scripts/verify-install.mjs --platform windows --artifacts artifacts
+
+      - name: 留存 smoke 结果
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-windows-result
+          path: smoke-result.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  # ─────────────────────────────────────────── 版本索引
+  index:
+    name: 生成版本索引
+    needs: [guard, macos, windows]
+    # 允许单平台构建：只要「至少一个平台成功」且「没有任何平台失败」就生成索引。
+    # 为什么：原条件要求 macos 与 windows 都 success，导致单平台触发时
+    # index 不跑 → publish 不跑 → **没有任何 Release**（实测踩坑）。
+    if: >-
+      always() &&
+      needs.macos.result != 'failure' &&
+      needs.windows.result != 'failure' &&
+      (needs.macos.result == 'success' || needs.windows.result == 'success')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # ：build-version-index.mjs 会读 vendor/dsh-desktop-main（宿主版本），
+      # 所以 index job 也需要宿主就位。
+      - name: 取回上游宿主并重放改造
+        run: node scripts/fetch-upstream.mjs
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: macos-*
+          path: release-assets
+          merge-multiple: true
+          # 单平台构建时可能没有 macos 产物，不能因此失败
+          if-no-files-found: ignore
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: windows-*
+          path: release-assets
+          merge-multiple: true
+          if-no-files-found: ignore
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: linux-*
+          path: release-assets
+          merge-multiple: true
+          if-no-files-found: ignore
+
+      - name: 生成索引（从产物扫描，不手工填，ADR-704）
+        env:
+          CHANNEL: ${{ needs.guard.outputs.channel }}
+          VERSION: ${{ needs.guard.outputs.version }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          node scripts/build-version-index.mjs \
+            --assets release-assets \
+            --version "$VERSION" \
+            --channel "$CHANNEL" \
+            --tag "$TAG" \
+            --out version-index.json
+
+      - name: 索引一致性断言（file 存在 + sha256 匹配）
+        run: node scripts/build-version-index.mjs --verify version-index.json --assets release-assets
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: version-index
+          path: |
+            version-index.json
+            version-index.md
+          retention-days: 30
+
+  # ─────────────────────────── 同步公开仓【已废除 · 】
+  #
+  # 原先此处是 sync-public job：把「净源码」导出并推送到一个**独立的镜像仓**，
+  # Release 也发在那里（该镜像仓已由主人删除）。
+  #
+  # 2026-10-19 主人指令：**镜像仓已删除；本仓本身转为 public，Release 就发在本仓** ——
+  # 双仓发行模型整体作废，该 job 及其依赖的 scripts/export-public.mjs 一并移除。
+  #
+  # ⚠️ 不要重新引入镜像仓方案：它把 Release 交给一个外部 job 的 output 做门控，
+  # 而 output 只在同一次 attempt 内有效 ⇒ 重跑时静默跳过（实测踩坑，见 AGENTS.md P-40/P-42）。
+  publish:
+    name: 发布
+    needs: [guard, index, smoke-macos, smoke-windows]
+    if: >-
+      always() &&
+      needs.index.result == 'success' &&
+      needs.smoke-macos.result != 'failure' &&
+      needs.smoke-windows.result != 'failure' &&
+      (needs.smoke-macos.result == 'success' || needs.smoke-macos.result == 'skipped') &&
+      (needs.smoke-windows.result == 'success' || needs.smoke-windows.result == 'skipped') &&
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: macos-*
+          path: release-assets
+          merge-multiple: true
+          if-no-files-found: ignore
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: windows-*
+          path: release-assets
+          merge-multiple: true
+          if-no-files-found: ignore
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: linux-*
+          path: release-assets
+          merge-multiple: true
+          if-no-files-found: ignore
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: version-index
+          path: release-assets
+          if-no-files-found: ignore
+
+      # Release 发在**本仓**：token 用工作流自带的 GITHUB_TOKEN，
+      # 不再依赖任何外部仓的细粒度 PAT —— 少一个会失效的外部前提。
+      - name: 发布 Release（本仓）
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ github.token }}
+          target_commitish: ${{ github.sha }}
+          # tag 名就是 ref 名（本 job 仅在 tag 推送时运行）——
+          # 刻意不读 needs.guard.outputs.*：门控与入参全部自洽，
+          # 重跑不会因 output 丢失而传空值（实测事故：九 job 全绿却零 Release）。
+          tag_name: ${{ github.ref_name }}
+          name: 小胰宝社区版 ${{ needs.guard.outputs.version }}
+          prerelease: ${{ needs.guard.outputs.channel == 'prerelease' }}
+          files: release-assets/*
+          body: |
+            小胰宝社区版 ${{ needs.guard.outputs.version }}（${{ needs.guard.outputs.channel }}）
+
+            **社区发行版，非 DeepSeek 官方产品。**
+
+            ## 下载
+
+            | 平台 | 安装版 | 免安装版 |
+            |---|---|---|
+            | macOS（Apple Silicon） | `xyb-desktop-community-${{ needs.guard.outputs.version }}-mac-arm64.dmg` | `xyb-desktop-community-${{ needs.guard.outputs.version }}-mac-arm64.zip` |
+            | macOS（Intel） | `xyb-desktop-community-${{ needs.guard.outputs.version }}-mac-x64.dmg` | `xyb-desktop-community-${{ needs.guard.outputs.version }}-mac-x64.zip` |
+            | Windows（x64） | `xyb-desktop-community-${{ needs.guard.outputs.version }}-windows-x64-setup.exe` | `xyb-desktop-community-${{ needs.guard.outputs.version }}-windows-x64-portable.zip` |
+
+            **免安装版怎么用**：解压后直接双击运行（Windows 解压到任意目录再运行其中的
+            `小胰宝社区版.exe`；macOS 解压后把 `.app` 拖到任意位置）。不写注册表、不建快捷方式，
+            数据仍保存在本机应用数据目录（与安装版一致）。
+
+            另有 `.blockmap`（增量更新用）与每个安装包对应的 `.sha256`（供校验）。
+
+            ## 安装
+
+            **本版未签名**，系统会提示：
+            - macOS：「无法打开，因为来自身份不明的开发者」→ 系统设置 → 隐私与安全性 → 「仍要打开」
+            - Windows：SmartScreen → 「更多信息」→「仍要运行」
+
+            详细说明见仓库 README 的「下载与安装」一节。
+
+            ## 数据与隐私
+
+            数据默认保存在本机；仅在你自己开启云端解析或使用检索能力时联网。
+
+            - **本机诊断**：事件时间线、诊断包导出、数据自检与修复 —— 全部只写本机，不上传（导出内容已脱敏）
+            - **已关闭**：自动更新检查、故障报告上报（社区版不向任何官方端点发送任何东西）
+
+            ## 首次使用
+
+            首次打开会有四步设置向导：隐私说明 → 数据目录可写检测 → 界面大小（标准/大字/特大）→ 建立第一份档案。
+            中老年使用者建议选「大字」或「特大」，顶栏随时可改。
+
+            ## 本版新增（相对上一版）
+
+            - 事件时间线 / 诊断包导出 / 数据自检与修复（本机诊断三件套）
+            - 数据自检与修复：坏 JSON 可从备份恢复、坏行可压实（原文先备份）
+            - 首启向导与大字模式（中老年可读性）
+            - 品牌署名与上游项目链接（点击跳转系统浏览器）
+            - 许可六件套随安装包分发（本发行版 / 第三方清单 / 上游 DSH Desktop / DeepSeek Harness / 青囊 / DSH Next）
+
+            > 本工具不构成医疗建议，不做诊断、不给用药剂量、不替代医生。
+
+  # ─────────────────────────────────────────── 手动触发的收尾
+  #
+  # 手动触发不发 Release，但需要把产物清单与索引汇总到 run 摘要，
+  # 方便内测人员直接在该 run 的 Artifacts 里下载安装包。
+  summary:
+    name: 产物汇总
+    needs: [guard, index]
+    if: >-
+      always() &&
+      needs.index.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: version-index
+          path: version-index
+
+      - name: 输出产物清单
+        run: |
+          set -euo pipefail
+          {
+            echo "## 小胰宝社区版 ${{ needs.guard.outputs.version }}（${{ needs.guard.outputs.channel }}）"
+            echo ""
+            echo "发布 tag：\`${{ needs.guard.outputs.release_tag }}\`（在本仓 Releases）"
+            echo ""
+            echo "安装包也可在本 run 的 Artifacts 下载：macos-arm64 / macos-x64 / windows-x64"
+            echo ""
+            if [ -f version-index/version-index.md ]; then
+              cat version-index/version-index.md
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

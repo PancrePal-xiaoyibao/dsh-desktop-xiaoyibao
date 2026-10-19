@@ -1,0 +1,13 @@
+node_modules
+.next
+backend/.env
+.env
+.env.local
+.env*.local
+.git
+.github
+certificates
+backend/bin
+backend/server
+*.log
+*.tsbuildinfo

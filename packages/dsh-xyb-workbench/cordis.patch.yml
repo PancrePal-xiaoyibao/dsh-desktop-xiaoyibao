@@ -1,0 +1,10 @@
+# 小胰宝工作台。
+#
+# name 必须写 npm 包名（不能写路径），否则 Node 解析不到。
+# root 用 dshHomePath('xyb') 定位到 DSH 数据根下的 xyb 子目录 —— 业务数据全部落在这里，
+# 与宿主数据边界一致（见上游 AGENTS.md §3「启动目录与插件解析拓扑」）。
+- insert:
+    - id: dsh-xyb-workbench
+      name: dsh-xyb-workbench
+      config:
+        root: !!js dshHomePath('xyb')

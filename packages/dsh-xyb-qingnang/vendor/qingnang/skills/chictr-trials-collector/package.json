@@ -1,0 +1,29 @@
+{
+  "name": "chictr-trials-collector",
+  "version": "1.0.0",
+  "description": "Standalone ChiCTR clinical trial collector and WorkBuddy skill",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "chictr-trials-collector": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test dist/**/*.test.js",
+    "start": "node dist/index.js",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "node-cache": "^5.1.2",
+    "playwright": "^1.62.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
+}

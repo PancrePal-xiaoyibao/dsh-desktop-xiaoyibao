@@ -1,0 +1,350 @@
+diff --git a/vendor/dsh-desktop-main/.gitignore b/vendor/dsh-desktop-main/.gitignore
+index 0323411..db3bb10 100644
+--- a/vendor/dsh-desktop-main/.gitignore
++++ b/vendor/dsh-desktop-main/.gitignore
+@@ -34,3 +34,9 @@ docs/mobile-connection-latency.zh.md
+ /.build/
+ /packages/ppt-runtime/templates/
+ /packages/ppt-bundles/
++
++# 小胰宝社区版插件就位目录（由 scripts/prepare-vendor-plugins.mjs 生成，
++# 打包时经 files 映射进 node_modules；仓库根 packages/ 是唯一事实源）
++/packages/dsh-xyb-branding/
++/packages/dsh-xyb-workbench/
++/packages/dsh-xyb-qingnang/
+diff --git a/vendor/dsh-desktop-main/build/dsh-desktop.patch.yml b/vendor/dsh-desktop-main/build/dsh-desktop.patch.yml
+index 13c45fb..e7e5656 100644
+--- a/vendor/dsh-desktop-main/build/dsh-desktop.patch.yml
++++ b/vendor/dsh-desktop-main/build/dsh-desktop.patch.yml
+@@ -22,6 +22,13 @@
+ - id: ui-settings-account
+   disabled: true
+ 
++# V-1101（CHG-011）：隐藏宿主左侧栏——整个窗口交给小胰宝面板（customFrame 已接管主内容区）。
++# 动机：主人要求「一打开就是完整的小胰宝界面」；宿主侧栏是最后一块不属于业务界面的区域。
++# 代价（已知并接受）：宿主自带的会话列表/工作台切换入口不再显示；会话仍可通过
++# AI 协助面板使用，设置由本发行版顶栏的「设置」承担。试验项，回退：删掉本块。
++- id: ui-sidebar
++  disabled: true
++
+ - insert:
+     - id: dsh-desktop-client-ui
+       name: dsh-desktop-client-ui
+@@ -76,3 +83,26 @@
+       config:
+         resources: !!js process.env.DSH_DESKTOP_OFFICE_RESOURCES
+         cli: !!js process.env.DSH_DESKTOP_OFFICE_CLI
++
++# ─────────────────────────────────────────────────────────────
++# 小胰宝社区版（CHG-000 / CHG-001 / CHG-009）
++#
++# 以下三条 insert 把社区版自有插件接入宿主：
++#   · dsh-xyb-branding   品牌层：双 logo（DSH 大肥鱼 + 社区小胰宝）
++#   · dsh-xyb-workbench  业务层：小胰宝工作台（数据层 / 闸门 / 看板）
++#   · dsh-xyb-qingnang   能力层：青囊医学检索（5 条零凭据 MCP + 11 技能）
++#
++# 这三条改造记入 tasks/CHG-000/MODIFICATIONS.md，类型为 plugin-registration。
++- insert:
++    - id: dsh-xyb-branding
++      name: dsh-xyb-branding
++
++    - id: dsh-xyb-workbench
++      name: dsh-xyb-workbench
++      config:
++        root: !!js dshHomePath('xyb')
++
++    - id: dsh-xyb-qingnang
++      name: dsh-xyb-qingnang
++      config:
++        root: !!js dshHomePath('xyb')
+diff --git a/vendor/dsh-desktop-main/electron-builder.dev.cjs b/vendor/dsh-desktop-main/electron-builder.dev.cjs
+index 8c8e09c..df1ac60 100644
+--- a/vendor/dsh-desktop-main/electron-builder.dev.cjs
++++ b/vendor/dsh-desktop-main/electron-builder.dev.cjs
+@@ -1,22 +1,33 @@
+ const packageJson = require('./package.json')
+ 
++/**
++ * 小胰宝社区版 · 开发版构建配置
++ *
++ * 改造记录：tasks/CHG-000/MODIFICATIONS.md（类型 config）
++ *   appId         io.dsh.desktop.dev → com.pancrepal.xyb.desktop.dev
++ *   productName   DSH Desktop Dev    → 小胰宝社区版 Dev
++ *   extraMetadata.name  dsh-desktop-dev → xyb-desktop-dev
++ *   artifactName  dsh-desktop-dev-…  → xyb-desktop-community-dev-…
++ *
++ * 目的：开发版与官方版、与社区正式版**三方隔离**（不同 appId → 不同 userData）。
++ */
+ module.exports = {
+   ...packageJson.build,
+-  appId: 'io.dsh.desktop.dev',
+-  productName: 'DSH Desktop Dev',
++  appId: 'com.pancrepal.xyb.desktop.dev',
++  productName: '小胰宝社区版 Dev',
+   directories: {
+     ...packageJson.build.directories,
+     output: 'dist-dev'
+   },
+   extraMetadata: {
+-    name: 'dsh-desktop-dev',
+-    productName: 'DSH Desktop Dev',
++    name: 'xyb-desktop-dev',
++    productName: '小胰宝社区版 Dev',
+     dshDesktopChannel: 'development'
+   },
+-  artifactName: 'dsh-desktop-dev-${os}-${arch}.${ext}',
++  artifactName: 'xyb-desktop-community-dev-${os}-${arch}.${ext}',
+   nsis: {
+     ...packageJson.build.nsis,
+-    artifactName: 'dsh-desktop-dev-windows-${arch}-setup.${ext}'
++    artifactName: 'xyb-desktop-community-dev-windows-${arch}-setup.${ext}'
+   },
+   publish: null
+ }
+diff --git a/vendor/dsh-desktop-main/package.json b/vendor/dsh-desktop-main/package.json
+index 6150bec..87360fe 100644
+--- a/vendor/dsh-desktop-main/package.json
++++ b/vendor/dsh-desktop-main/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "dsh-desktop",
+-  "version": "0.1.1",
++  "version": "0.1.0",
+   "description": "A cross-platform desktop shell for DeepSeek Harness.",
+   "private": true,
+   "type": "module",
+@@ -313,8 +313,8 @@
+     "koffi": "3.1.5"
+   },
+   "build": {
+-    "appId": "io.dsh.desktop",
+-    "productName": "DSH Desktop",
++    "appId": "com.pancrepal.xyb.desktop",
++    "productName": "小胰宝社区版",
+     "asar": true,
+     "asarUnpack": [
+       "**/*.{node,dylib,dll,so,exe}",
+@@ -323,7 +323,13 @@
+       "**/@vscode/ripgrep-*/bin/rg",
+       "node_modules/@deepseek-ai/libreoffice-kit-*/**/*",
+       "node_modules/sherpa-onnx-*/**/*",
+-      ".build/ppt-runtime/packages/**/*"
++      ".build/ppt-runtime/packages/**/*",
++      "node_modules/dsh-xyb-qingnang/vendor/qingnang/vendor/node_modules/**/*",
++      "node_modules/dsh-xyb-qingnang/vendor/qingnang/scripts/**/*",
++      "node_modules/dsh-xyb-qingnang/vendor/qingnang/skills/**/*",
++      "node_modules/dsh-xyb-qingnang/vendor/qingnang/mcp-servers/**/*",
++      "node_modules/dsh-xyb-qingnang/vendor/qingnang/*.json",
++      "node_modules/dsh-xyb-qingnang/vendor/qingnang/LICENSE"
+     ],
+     "npmRebuild": false,
+     "compression": "maximum",
+@@ -384,7 +390,28 @@
+       "!**/node_modules/electron-to-chromium/**",
+       "!**/node_modules/update-browserslist-db/**",
+       "!**/node_modules/lodash/**",
+-      "!**/node_modules/@malept/**"
++      "!**/node_modules/@malept/**",
++      {
++        "from": "packages/dsh-xyb-branding",
++        "to": "node_modules/dsh-xyb-branding",
++        "filter": [
++          "**/*"
++        ]
++      },
++      {
++        "from": "packages/dsh-xyb-workbench",
++        "to": "node_modules/dsh-xyb-workbench",
++        "filter": [
++          "**/*"
++        ]
++      },
++      {
++        "from": "packages/dsh-xyb-qingnang",
++        "to": "node_modules/dsh-xyb-qingnang",
++        "filter": [
++          "**/*"
++        ]
++      }
+     ],
+     "extraResources": [
+       {
+@@ -458,16 +485,35 @@
+       {
+         "from": "build/office-cli.mjs",
+         "to": "office-cli.mjs"
+-      }
+-    ],
+-    "publish": [
++      },
++      {
++        "from": "../../LICENSE",
++        "to": "licenses/LICENSE"
++      },
++      {
++        "from": "../../THIRD-PARTY-NOTICES.md",
++        "to": "licenses/THIRD-PARTY-NOTICES.md"
++      },
++      {
++        "from": "LICENSE",
++        "to": "licenses/DSH-Desktop-upstream-MIT.txt"
++      },
+       {
+-        "provider": "generic",
+-        "url": "https://dshdesktop.com/updates/latest/"
++        "from": "node_modules/@deepseek-ai/dsh/LICENSE",
++        "to": "licenses/DeepSeek-Harness-MIT.txt"
++      },
++      {
++        "from": "../../packages/dsh-xyb-qingnang/vendor/qingnang/LICENSE",
++        "to": "licenses/QingNang-Apache-2.0.txt"
++      },
++      {
++        "from": "../../vendor/dsh-desktop-next/LICENSE",
++        "to": "licenses/DSH-Desktop-Next-MIT.txt"
+       }
+     ],
++    "publish": [],
+     "detectUpdateChannel": false,
+-    "artifactName": "dsh-desktop-${os}-${arch}.${ext}",
++    "artifactName": "xyb-desktop-community-${version}-${os}-${arch}.${ext}",
+     "mac": {
+       "category": "public.app-category.developer-tools",
+       "icon": "build/icon.icns",
+@@ -491,17 +537,24 @@
+         ]
+       },
+       "requestedExecutionLevel": "asInvoker",
++      "artifactName": "xyb-desktop-community-${version}-windows-${arch}-portable.${ext}",
+       "target": [
+         {
+           "target": "nsis",
+           "arch": [
+             "x64"
+           ]
++        },
++        {
++          "target": "zip",
++          "arch": [
++            "x64"
++          ]
+         }
+       ]
+     },
+     "nsis": {
+-      "artifactName": "dsh-desktop-windows-${arch}-setup.${ext}",
++      "artifactName": "xyb-desktop-community-${version}-windows-${arch}-setup.${ext}",
+       "include": "build/installer.nsh",
+       "oneClick": false,
+       "allowToChangeInstallationDirectory": true,
+diff --git a/vendor/dsh-desktop-main/scripts/office-runtime/lock.json b/vendor/dsh-desktop-main/scripts/office-runtime/lock.json
+index ee71f57..7302683 100644
+--- a/vendor/dsh-desktop-main/scripts/office-runtime/lock.json
++++ b/vendor/dsh-desktop-main/scripts/office-runtime/lock.json
+@@ -24,6 +24,28 @@
+         }
+       ]
+     },
++    "win-arm64": {
++      "pythonTarget": "aarch64-pc-windows-msvc",
++      "pythonSha256": "72f4713d056a17961bdba7b43be82a878035040fa1eee30cfd5e43b91a2852d9",
++      "wheels": [
++        {
++          "url": "https://files.pythonhosted.org/packages/78/a6/aae5cc2ca78c45e64b9ef22f089141d661516856cf7c8a54ba434576900d/numpy-2.3.5-cp312-cp312-win_arm64.whl",
++          "sha256": "f28620fe26bee16243be2b7b874da327312240a7cdc38b769a697578d2100013"
++        },
++        {
++          "url": "https://files.pythonhosted.org/packages/86/4f/caf9952948fb00d23795f09b893d11f1cacb384e666854d87249530f7cbe/pandas-3.0.1-cp312-cp312-win_arm64.whl",
++          "sha256": "0f463ebfd8de7f326d38037c7363c6dacb857c5881ab8961fb387804d6daf2f7"
++        },
++        {
++          "url": "https://files.pythonhosted.org/packages/de/47/4845a0a6c0dbf1db8456bd9fc791f13c5ced7ced20606d08a0aacfd25b49/pillow-12.3.0-cp312-cp312-win_arm64.whl",
++          "sha256": "331b624368d4f1d069149002f25f44bc61c8919ce8ddb3c45bdad8f6e2d89510"
++        },
++        {
++          "url": "https://files.pythonhosted.org/packages/e4/1b/7bcebb7b6332cb3ae85e9c13b139adb6f23f75c71d84041c56a5005d9a29/lxml-6.1.3-cp312-cp312-win_arm64.whl",
++          "sha256": "1aeca87830c4fe649dcf93fe2b059525b71c72587f21be4ae4af7103082a79fa"
++        }
++      ]
++    },
+     "mac-arm64": {
+       "pythonTarget": "aarch64-apple-darwin",
+       "pythonSha256": "81a359f1cfadd4da11766534c5913791cea55f26e1bb902cacd2a531bb1e4b2b",
+diff --git a/vendor/dsh-desktop-main/scripts/office-runtime/prepare.mjs b/vendor/dsh-desktop-main/scripts/office-runtime/prepare.mjs
+index 9b82b05..ceeb139 100644
+--- a/vendor/dsh-desktop-main/scripts/office-runtime/prepare.mjs
++++ b/vendor/dsh-desktop-main/scripts/office-runtime/prepare.mjs
+@@ -81,7 +81,10 @@ export async function prepareOfficeRuntime({ target = officeTarget(), output = j
+     const filename = `cpython-${lock.pythonVersion}+${lock.pythonRelease}-${artifact.pythonTarget}-install_only_stripped.tar.gz`
+     const url = `https://github.com/astral-sh/python-build-standalone/releases/download/${lock.pythonRelease}/${encodeURIComponent(filename)}`
+     await extractTar({ file: await downloadAsset(url, artifact.pythonSha256, cache), cwd: dependencies })
+-    const windows = target === 'win-x64'
++    // ⚠️ 不能用 `target === 'win-x64'` 判断平台：
++    //    加 win-arm64 后，arm64 会走 darwin 分支 → site-packages 路径错 → 运行时找不到包。
++    //    改成按 target 前缀判断。
++    const windows = target.startsWith('win-')
+     const sitePackages = join(dependencies, 'python', ...(windows ? ['Lib'] : ['lib', `python${lock.pythonVersion.split('.').slice(0, 2).join('.')}`]), 'site-packages')
+     for (const wheel of [...artifact.wheels, ...lock.wheels]) {
+       await unpackWheel(await downloadAsset(wheel.url, wheel.sha256, cache), sitePackages)
+diff --git a/vendor/dsh-desktop-main/src/main/desktop-service/index.ts b/vendor/dsh-desktop-main/src/main/desktop-service/index.ts
+index 666500f..b914be6 100644
+--- a/vendor/dsh-desktop-main/src/main/desktop-service/index.ts
++++ b/vendor/dsh-desktop-main/src/main/desktop-service/index.ts
+@@ -1,4 +1,4 @@
+-import { app, dialog, net } from 'electron'
++import { app, net } from 'electron'
+ import { join } from 'node:path'
+ import { DesktopService } from './service'
+ import { attachDiagnostics } from './diagnostics'
+@@ -16,20 +16,13 @@ export function initializeDesktopService(): void {
+       version: app.getVersion(), platform: process.platform, arch: process.arch,
+       // Chromium networking uses the same proxy configuration as the desktop app.
+       request: (url, init) => net.fetch(url, init),
+-      confirmUpload: async body => {
+-        const report = JSON.parse(body) as { version: string; kind: string; lines: string[] }
+-        const { response } = await dialog.showMessageBox({
+-          type: 'question',
+-          title: '发送故障报告',
+-          message: '是否发送本次故障报告，帮助排查问题？',
+-          detail: `版本：${report.version}\n故障类型：${report.kind}\n\n报告将发送到 https://dshdesktop.com/crash，包含安装 ID、版本、平台、故障时间、错误信息和 harness.log 最后最多 100 行（本次 ${report.lines.length} 行）。\n\n点击“发送一次”仅同意发送本次报告；选择“不发送”将丢弃本次待传报告，不影响继续使用。`,
+-          buttons: ['不发送', '发送一次'],
+-          defaultId: 0,
+-          cancelId: 0,
+-          noLink: true
+-        })
+-        return response === 1
+-      }
++      // V-1104（CHG-011 发布前合规收口）：社区版**不上传故障报告**。
++      //
++      // 诊断仍写本地（logs/harness.log 与 userData/desktop-service），仅上报环节关闭：
++      //   ① 隐私文档承诺「只有两种情况会联网」，而故障上报是第三个官方端点；
++      //   ② 端点是官方域名 dshdesktop.com/crash（与 V-1103 同一取向）；
++      //   ③ 报告含安装 ID/版本/平台/错误与日志尾部，医疗场景采取最小上行面。
++      confirmUpload: async () => false,
+     })
+     desktopDiagnostics = attachDiagnostics(app, service, {
+       onError: error => console.warn('[desktop-service]', error instanceof Error ? error.name : 'Diagnostic failure')
+diff --git a/vendor/dsh-desktop-main/src/main/update/update-manager.ts b/vendor/dsh-desktop-main/src/main/update/update-manager.ts
+index 3884c1a..e732a55 100644
+--- a/vendor/dsh-desktop-main/src/main/update/update-manager.ts
++++ b/vendor/dsh-desktop-main/src/main/update/update-manager.ts
+@@ -328,7 +328,19 @@ function checkAfterResume(): void {
+   if (shouldCheckAfterResume(lastCheckedAt)) void checkForUpdates()
+ }
+ 
++/**
++ * 社区发行版（小胰宝）不出网检查官方更新。
++ *
++ * CHG-000 C-002 / 隐私承诺：社区版不得指向 dshdesktop.com。
++ * 运行时更新检查是硬编码在 update/* 里的（build.publish=[] 只关打包/发布配置，管不住它）：
++ * 实测打包版启动 15–30s 后必发 GET https://dshdesktop.com/... 并提示可升级到官方
++ * DSH Desktop（P-34）。此处把「是否支持更新」一刀关掉，升级通道整体不启用；
++ * CHG-007 接入社区更新源时改这里（或复现一趟支持的检查）。
++ */
++const COMMUNITY_UPDATES_DISABLED = true
++
+ function supportsUpdates(): boolean {
++  if (COMMUNITY_UPDATES_DISABLED) return false
+   return supportsAutoUpdates(app.isPackaged, process.platform)
+ }
+ 

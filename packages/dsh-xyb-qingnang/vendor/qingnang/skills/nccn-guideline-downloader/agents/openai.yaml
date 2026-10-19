@@ -1,0 +1,4 @@
+interface:
+  display_name: "NCCN 指南下载器"
+  short_description: "Download NCCN clinical guidelines and patient manuals"
+  default_prompt: "Use $nccn-guideline-downloader to download NCCN guidelines"

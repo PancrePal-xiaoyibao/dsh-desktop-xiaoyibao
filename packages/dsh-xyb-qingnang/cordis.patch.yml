@@ -1,0 +1,9 @@
+# 青囊能力包嵌入。
+#
+# 把青囊的 5 条零凭据 MCP 通道 + 11 个技能 + 注入层接入社区版。
+# name 必须是 npm 包名（不能写路径）。
+- insert:
+    - id: dsh-xyb-qingnang
+      name: dsh-xyb-qingnang
+      config:
+        root: !!js dshHomePath('xyb')

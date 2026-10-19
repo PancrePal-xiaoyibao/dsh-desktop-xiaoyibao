@@ -1,0 +1,63 @@
+# ============================================================
+# clinicaltrials-intel skill - Git 忽略规则
+# ============================================================
+# 原则:模板(assets/*.template)和业务代码可提交;
+#       真实配置文件(.env/config.yaml)与运行时产物绝不提交。
+
+# ==================== 敏感配置（真实凭据,永不提交） ====================
+# setup.sh 会从模板复制出 .env / config.yaml 到仓库根,
+# 这两个是本地运行配置(含凭据引用),禁止上传。
+.env
+.env.*
+!.env.template
+.fastgpt.env.txt
+config.yaml
+config.yml
+!assets/.env.template
+!assets/config.yaml.template
+
+# ==================== 运行时产物 ====================
+output/
+data/
+cache/
+*.backup
+*.bak
+
+# ==================== Python ====================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+*.egg-info/
+
+# ==================== 日志与临时文件 ====================
+*.log
+!dev.log
+*.tmp
+*.swp
+*.swo
+*~
+discord.md
+test_llm_fallback.py
+
+# ==================== 含凭据的调试/示例脚本（永不提交） ====================
+sample_gewe_*.py
+curl_*_push.md
+kick_off_member.py
+openclaw.json
+*.token
+*.key
+secrets.json
+
+# ==================== OS / IDE ====================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.qoder/
+.pytest_cache/

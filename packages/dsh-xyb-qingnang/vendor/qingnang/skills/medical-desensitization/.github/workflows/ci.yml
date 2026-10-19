@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: 前端构建与检查
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 签出代码
+        uses: actions/checkout@v6
+
+      - name: 配置 Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: ESLint 检查
+        run: npm run lint
+
+      - name: TypeScript 类型检查
+        run: npx tsc --noEmit
+
+      - name: 命名与文案合规检查
+        run: |
+          if rg -n '小馨宝|治愈之旅|倾诉|xiaoxinbao' . \
+            --glob '!node_modules' \
+            --glob '!.next' \
+            --glob '!package-lock.json'; then
+            echo '发现旧命名或旧语境残留，请先清理后再提交。'
+            exit 1
+          fi
+
+      - name: 构建项目
+        run: npm run build
+        env:
+          CHAT_API_URL: https://placeholder.example.com
+          CHAT_API_KEY: ci-placeholder
+          ALIBABA_API_KEY: ci-placeholder
+
+  backend:
+    name: 后端构建与测试
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: 签出代码
+        uses: actions/checkout@v6
+
+      - name: 配置 Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: 下载依赖
+        run: go mod download
+
+      - name: 静态检查
+        run: go vet ./...
+
+      - name: 运行测试
+        run: go test -v -race -count=1 ./...
+
+      - name: 构建二进制
+        run: go build -o bin/xiaoyibao-backend ./cmd/server

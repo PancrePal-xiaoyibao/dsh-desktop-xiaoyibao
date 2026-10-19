@@ -1,0 +1,61 @@
+name: CodeQL 代码安全分析
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # 每周一 UTC 8:00（北京时间 16:00）自动扫描
+    - cron: "0 8 * * 1"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: CodeQL 分析 (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      security-events: write
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, go]
+        include:
+          - language: go
+            build-command: cd backend && go build ./...
+
+    steps:
+      - name: 签出代码
+        uses: actions/checkout@v6
+
+      - name: 配置 Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.25.10
+          cache-dependency-path: backend/go.sum
+
+      - name: 初始化 CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: 同步 Go 模块元数据
+        if: matrix.language == 'go'
+        run: cd backend && go mod tidy
+
+      - name: 构建 Go 代码
+        if: matrix.language == 'go'
+        run: ${{ matrix.build-command }}
+
+      - name: 执行 CodeQL 分析
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"

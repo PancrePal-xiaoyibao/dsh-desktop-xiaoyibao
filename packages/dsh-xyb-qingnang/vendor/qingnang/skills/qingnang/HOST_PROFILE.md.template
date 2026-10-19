@@ -1,0 +1,65 @@
+# 青囊 · 本机画像（HOST_PROFILE）
+
+> **本文件由 `scripts/qingnang.mjs probe` 在部署时自动生成。**
+> 它是**机器相关**的，已在 `.gitignore` 中，**不会进仓库**。
+> 重新生成：`node scripts/qingnang.mjs probe`
+
+**探测时间**：{{PROBED_AT}}
+
+---
+
+## 硬件
+
+| 项 | 值 |
+|---|---|
+| CPU | {{CPU_MODEL}} |
+| 核心数 | {{CPU_CORES}} |
+| 内存 | {{MEMORY_GB}} GB |
+| GPU | {{GPU}} |
+| 磁盘 | {{DISKS}} |
+
+## 运行时
+
+| 项 | 值 | 青囊是否需要 |
+|---|---|---|
+| Node | {{NODE}} | **必需**（MCP 走 npx） |
+| npx | {{NPX}} | **必需** |
+| Python | {{PYTHON}} | 可选（Phase 3 本地解析用） |
+| npm | {{NPM}} | 必需（拉包） |
+| git | {{GIT}} | 必需（部署用） |
+
+## 网络与代理 ⚠️ 搜索失败先看这里
+
+| 项 | 值 |
+|---|---|
+| 环境变量 `http_proxy` | {{ENV_HTTP_PROXY}} |
+| 环境变量 `https_proxy` | {{ENV_HTTPS_PROXY}} |
+| 环境变量 `all_proxy` | {{ENV_ALL_PROXY}} |
+| 本机监听的常见代理端口 | {{OPEN_PORTS}} |
+| **建议使用的代理地址** | **{{SUGGESTED_PROXY}}** |
+| npm registry 可达 | {{NPM_REACHABLE}} |
+
+**怎么用这个代理地址**：
+
+```bash
+# 运行期（实际搜索时）
+USE_PROXY=true PROXY_URL={{SUGGESTED_PROXY}} <启动 open-websearch>
+
+# 安装期（拉 npm 包时，两个阶段独立，只配一个不够）
+npm --proxy {{SUGGESTED_PROXY}} --https-proxy {{SUGGESTED_PROXY}} install <包名>
+```
+
+> 若「建议代理地址」是空的，说明**本机没有检测到代理**。此时：
+> - 若你在国内且搜索境外站点失败 → 你可能需要自行配置代理，然后把地址填到这里
+> - 若你能直连 → 无需代理，保持 `USE_PROXY=false` 即可
+
+## 宿主环境
+
+| 宿主 | 是否检测到 |
+|---|---|
+| Claude Code（`~/.claude`） | {{HOST_CLAUDE}} |
+| pi（`~/.pi`） | {{HOST_PI}} |
+| Codex（`~/.codex`） | {{HOST_CODEX}} |
+| OpenClaw | {{HOST_OPENCLAW}} |
+
+**给 Agent 的提示**：部署时用 `--host=` 指定宿主；不指定则从本表自动推断。

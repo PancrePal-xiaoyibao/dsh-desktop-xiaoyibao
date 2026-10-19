@@ -1,0 +1,7 @@
+# 小胰宝社区版品牌层。
+#
+# 这条 insert 行把 dsh-xyb-branding 插入 Harness 插件树。
+# name 必须是 npm 包名（不能写相对/绝对路径），否则 Node 解析不到。
+- insert:
+    - id: dsh-xyb-branding
+      name: dsh-xyb-branding

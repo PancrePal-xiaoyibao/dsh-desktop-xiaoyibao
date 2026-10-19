@@ -1,0 +1,24 @@
+# 行尾与转换纪律
+#
+# 为什么需要这个文件：**同一个 commit 在不同平台上必须检出成同一串字节**，
+# 否则构建结果不可复现。这里的两条规则都由真实事故反推而来，别"简化"掉。
+#
+# ⚠️ 事故（实测）：
+#   patches/host-modifications.patch 在仓库里存的是 LF（blob CR=0），
+#   但机器上 core.autocrlf=true 且当时**没有本文件** → 检出时被转成 CRLF。
+#   而 CI 里 fetch-upstream.mjs 强制 core.autocrlf=false 把宿主检出成 LF，
+#   于是「CRLF 补丁 打 LF 文件」→ git apply 对行尾敏感 →
+#       error: patch failed: vendor/dsh-desktop-main/.gitignore:34
+#       error: ... patch does not apply      （8 个文件全部失败）
+#   同一个仓库，Windows 上打不出包、Linux 上能打出来。
+
+# 补丁是**字节级构建输入**，不是给人读的文本。
+# -text = 二进制语义 → git 永不做行尾转换，处处都是它被生成时的 LF。
+patches/*.patch -text
+
+# 宿主源码统一 LF。
+# 补丁是以 LF 生成的，目标文件必须也是 LF，git apply 才对得上。
+# 宿主目录现在不被跟踪（由 fetch-upstream.mjs 取回），
+# 但这条规则仍必须存在：git apply 会读取工作区的 .gitattributes 来决定
+# 要不要对目标文件做文本转换 —— 缺了它，两种行尾的树在同一台机器上表现不一致。
+vendor/** text eol=lf

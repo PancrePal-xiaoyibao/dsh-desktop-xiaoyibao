@@ -1,0 +1,55 @@
+{
+  "name": "dsh-xyb-qingnang",
+  "version": "0.1.0",
+  "description": "青囊（QingNang）医学能力包嵌入 —— 让社区版 DSH Desktop 开箱即带医学检索能力（5 条零凭据 MCP 通道 + 11 个技能）。",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PancrePal-xiaoyibao/dsh-desktop-xiaoyibao.git",
+    "directory": "packages/dsh-xyb-qingnang"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "dsh-desktop",
+    "qingnang",
+    "mcp",
+    "medical-search"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-primitives"
+      ],
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-client-connection": "^0.1.2-rc.1 || ^0.1.7-rc.1 || ^0.1.7-rc.2 || ^0.2.0-rc.1"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

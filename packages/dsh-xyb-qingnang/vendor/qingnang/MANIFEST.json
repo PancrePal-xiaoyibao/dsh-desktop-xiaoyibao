@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "pack": "qingnang",
+  "pack_version": "0.1.0",
+  "brand": "小胰宝社区 · 青囊",
+  "license": "Apache-2.0",
+  "generated_at": "2026-10-14T12:26:26Z",
+  "positioning": "小胰宝社区 · 医学能力资产包 —— 为 AI Agent 而做，不是给人看的文档站",
+  "skill": {
+    "path": "skills/qingnang",
+    "inject_bytes_max": 2048,
+    "search_runtime_bytes_max": 8192,
+    "skill_bytes_max": 14336,
+    "vendored_root": "skills/",
+    "vendored_count": 10,
+    "vendored_adapter_skill": "上游无 SKILL.md 时由青囊补，文件头标注「青囊编写，非上游」（见 vendor-skills.mjs 的 adapterSkill）",
+    "vendored": [
+      { "dir": "clinicaltrials-query-analysis", "upstream": "opencare-skillhub/clinicaltrials-query-analysis", "license": "Apache-2.0", "category": "临床试验" },
+      { "dir": "chictr-trials-collector", "upstream": "opencare-skillhub/chictr-trials-collector", "license": "Apache-2.0", "category": "临床试验" },
+      { "dir": "clinicaltrials-intel-skill", "upstream": "opencare-skillhub/clinicaltrials-intel-skill", "license": "Apache-2.0", "category": "临床试验" },
+      { "dir": "nccn-guideline-downloader", "upstream": "opencare-skillhub/nccn-guideline-downloader", "license": "Apache-2.0", "category": "临床指南" },
+      { "dir": "RAG-content-processor", "upstream": "opencare-skillhub/RAG-content-processor", "license": "Apache-2.0", "category": "知识生产" },
+      { "dir": "aura_health_profile", "upstream": "opencare-skillhub/aura_health_profile", "license": "MIT-0", "category": "健康管理" },
+      { "dir": "getnote-openclaw", "upstream": "opencare-skillhub/getnote-openclaw", "license": "MIT", "category": "笔记" },
+      { "dir": "xyb_dicom_download_skills", "upstream": "opencare-skillhub/xyb_dicom_download_skills", "license": "Apache-2.0", "category": "影像" },
+      { "dir": "medical-desensitization", "upstream": "PancrePal-xiaoyibao/medical-desensitization", "license": "Apache-2.0", "category": "病历隐私" },
+      { "dir": "maskdesk", "upstream": "PancrePal-xiaoyibao/maskdesk", "license": "Apache-2.0", "category": "病历隐私" }
+    ],
+    "vendored_adapter_file": "QINGNANG.md",
+    "vendored_by": "scripts/vendor-skills.mjs",
+    "files": {
+      "INJECT.md": {
+        "bytes": 2026,
+        "sha256_16": "c0ce6d26f6b69229"
+      },
+      "SEARCH_RUNTIME.md": {
+        "bytes": 7290,
+        "sha256_16": "fe2c166b0b870cfa"
+      },
+      "SKILL.md": {
+        "bytes": 7196,
+        "sha256_16": "57d6314084473699"
+      },
+      "MERGE_CONTRACT.md": {
+        "bytes": 8769,
+        "sha256_16": "aa3a436f0d86dd6e"
+      }
+    },
+    "injection_files_required": [
+      "INJECT.md",
+      "SEARCH_RUNTIME.md",
+      "HOST_PROFILE.md"
+    ]
+  },
+  "mcp": {
+    "manifest": "mcp-servers/manifest.json",
+    "sha256_16": "d2eb0a6dfa6f85df",
+    "server_count": 5,
+    "reserved_count": 2,
+    "license_whitelist": [
+      "MIT",
+      "Apache-2.0",
+      "ISC",
+      "BSD-3-Clause"
+    ],
+    "launch_dir": "mcp-servers/launch"
+  },
+  "runtime": {
+    "node_min": "22.13.0",
+    "node_min_reason": "unified-trial-mcp 要求 node >=22.13.0，为五个 MCP 中最严下限",
+    "js_build_chain": [
+      "pnpm",
+      "npm",
+      "yarn"
+    ],
+    "py_build_chain": [
+      "uv venv",
+      "python -m venv",
+      "conda"
+    ],
+    "build_command": "node scripts/qingnang.mjs fetch",
+    "offline_after_build": true
+  },
+  "channels": {
+    "web_search": {
+      "credential_required": false,
+      "credential_optional": [
+        "MODE",
+        "SEARCH_MODE",
+        "USE_PROXY",
+        "PROXY_URL"
+      ],
+      "channel": 1,
+      "degrade_to": "bing_cn"
+    },
+    "bing_cn": {
+      "credential_required": false,
+      "credential_optional": [],
+      "channel": 2,
+      "degrade_to": null
+    },
+    "pubmed": {
+      "credential_required": false,
+      "credential_optional": [
+        "NCBI_API_KEY"
+      ],
+      "channel": 3,
+      "degrade_to": null
+    },
+    "openalex": {
+      "credential_required": false,
+      "credential_optional": [
+        "OPENALEX_EMAIL"
+      ],
+      "channel": 3,
+      "degrade_to": null
+    },
+    "unified_trial": {
+      "credential_required": false,
+      "credential_optional": [],
+      "channel": 4,
+      "degrade_to": null
+    },
+    "knows": {
+      "credential_required": true,
+      "status": "reserved_license_or_credential_pending",
+      "reason": "需凭据（走社区公众号/小程序申请）；且上游 repo 待补 LICENSE 文件",
+      "degrade_to": "pubmed",
+      "channel": 5
+    },
+    "get_biji": {
+      "credential_required": false,
+      "status": "reserved_license_or_credential_pending",
+      "reason": "上游双仓库均无 LICENSE 文件（npm 声明 MIT）",
+      "degrade_to": null,
+      "channel": 6
+    }
+  },
+  "host_profile": {
+    "path": "skills/qingnang/HOST_PROFILE.md",
+    "template": "skills/qingnang/HOST_PROFILE.md.template",
+    "generated_by": "scripts/qingnang.mjs probe",
+    "gitignored": true
+  },
+  "data": {
+    "public_pack": null,
+    "public_pack_note": "Phase 3 装载胰腺癌知识包；null 表示当前无公开数据包，非遗漏",
+    "private_root": "~/.qingnang/private"
+  },
+  "privacy": {
+    "telemetry_allowed_values": [
+      "off"
+    ],
+    "private_paths_exportable": false,
+    "private_dir_mode": "0700"
+  },
+  "forge_seams": {
+    "s1_no_host_specific_code": true,
+    "s2_manifest_single_source": "mcp-servers/manifest.json",
+    "s3_injection_layers_separated": [
+      "INJECT.md",
+      "SEARCH_RUNTIME.md",
+      "HOST_PROFILE.md"
+    ],
+    "s4_merge_contract_shipped": "skills/qingnang/MERGE_CONTRACT.md",
+    "s5_host_profile_decoupled": true,
+    "note": "为阶段二 forge（青囊 × DSH Desktop 合并）与阶段三社区版 DSH Desktop 预留的接缝。见 SPEC §3.10 ADR-012。"
+  }
+}

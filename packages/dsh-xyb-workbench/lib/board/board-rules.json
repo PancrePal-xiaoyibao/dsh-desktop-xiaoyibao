@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "completeness": {
+    "total": 7,
+    "note": "七个维度的资料完整度分母。"
+  },
+  "weight": {
+    "windowDays": 30,
+    "alertPercentDrop": 5,
+    "watchPercentDrop": 2,
+    "note": "近 N 天体重下降比例阈值。"
+  },
+  "ecog": {
+    "goodMax": 1,
+    "watchMax": 2,
+    "note": "ECOG 0–1 良好，2 需关注，≥3 异常。本期 ECOG 由入组档案提供，未提供时为未评估。"
+  },
+  "unimplementedNote": {
+    "match": "未做匹配分析",
+    "psych": "尚未做过情绪量表",
+    "comorbidity": "尚无并发症记录",
+    "toxicity": "尚无不良反应记录"
+  }
+}
