@@ -310,7 +310,13 @@ jobs:
         #   rpm   → 麒麟 V10（RPM 系）、openUOS/openEuler、Fedora/RHEL 系
         #   AppImage / tar.gz → 发行版无关，作为兜底
         # 覆盖：统信 UOS 20/25、deepin、麒麟 V10、openEuler（deb + rpm），x86_64 与 aarch64 双架构。
-        run: npx --no-install electron-builder --linux deb rpm AppImage tar.gz --${{ matrix.arch }} --publish never -c.linux.category=Utility -c.deb.priority=optional -c.deb.depends=libgtk-3-0 -c.deb.depends=libnotify4 -c.deb.depends=libnss3 -c.deb.depends=libxss1 -c.deb.depends=libxtst6 -c.deb.depends=xdg-utils -c.deb.depends=libatspi2.0-0 -c.deb.depends=libuuid1 -c.deb.depends=libsecret-1-0 -c.deb.depends=libgbm1 -c.deb.depends=libasound2
+        #
+        # ⚠️ `-c.linux.executableName=xyb-desktop` 是**必需**的：
+        #   我们的 productName 是中文（「小胰宝社区版」），electron-builder 在 Linux 上
+        #   会用它推导可执行文件名，推导结果与解包后真实文件名对不上 →
+        #   打包阶段报 `Cannot locate the packaged Electron executable`（实测两个 arch 全挂）。
+        #   Linux 的可执行名必须是 ASCII；Windows/macOS 不受影响（各自有自己的命名规则）。
+        run: npx --no-install electron-builder --linux deb rpm AppImage tar.gz --${{ matrix.arch }} --publish never -c.linux.executableName=xyb-desktop -c.linux.category=Utility -c.deb.priority=optional -c.deb.depends=libgtk-3-0 -c.deb.depends=libnotify4 -c.deb.depends=libnss3 -c.deb.depends=libxss1 -c.deb.depends=libxtst6 -c.deb.depends=xdg-utils -c.deb.depends=libatspi2.0-0 -c.deb.depends=libuuid1 -c.deb.depends=libsecret-1-0 -c.deb.depends=libgbm1 -c.deb.depends=libasound2
 
       - name: 收集产物（含 .blockmap 与更新元数据）
         working-directory: ${{ env.DESKTOP_DIR }}
