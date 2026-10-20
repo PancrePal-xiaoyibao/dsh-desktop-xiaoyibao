@@ -2,7 +2,7 @@
 
 > **胰腺癌患者全程管理工作台 · 社区发行版**
 >
-> 宿主基线：[DSH Desktop](https://github.com/dataelement/dsh-desktop)（MIT，改造而来）；[DSH Desktop Next](https://www.dshdesktop.cn/)（MIT，优选功能来源）；内嵌 [青囊 QingNang](https://github.com/PancrePal-xiaoyibao/QingNang)（Apache-2.0）医学能力包。
+> 宿主基线：[DSH Desktop](https://dshdesktop.com/zh/)（MIT，改造而来）；[DSH Desktop Next](https://www.dshdesktop.cn/)（MIT，优选功能来源）；内嵌 [青囊 QingNang](https://github.com/PancrePal-xiaoyibao/QingNang)（Apache-2.0）医学能力包。
 >
 > ⚠️ **本软件是社区发行版，非 DeepSeek 官方产品，也与 DSH Desktop 官方团队无隶属关系。**
 >
@@ -225,7 +225,7 @@ docs/ 用户文档与交互原型
 
 > **上游项目来源**（两个，各自独立开源、与本项目无隶属关系）：
 > 1. [DSH Desktop Next](https://github.com/anywhere-labs/dsh-desktop)（Anywhere Labs，MIT）
-> 2. [DSH Desktop](https://github.com/dataelement/dsh-desktop)（DataElement，MIT）—— 本发行版的宿主基线
+> 2. [DSH Desktop](https://dshdesktop.com/zh/)（DataElement，MIT）—— 本发行版的宿主基线
 >
 > 本项目**不镜像**它们的源码：构建时按锁定 commit 取回（见
 > [`UPSTREAM-SOURCES.md`](UPSTREAM-SOURCES.md)），第三方版权与许可见 [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)。
@@ -285,7 +285,7 @@ npm run package:win # 产出安装包与免安装包（需 vendor/）
 
 ### 感谢 dataelement 团队
 
-本发行版能够存在，首先归功于 **[dataelement 团队](https://github.com/dataelement)** 的工作 —— 他们维护的 **[DSH Desktop](https://github.com/dataelement/dsh-desktop)** 是本发行版的**宿主基线**。
+本发行版能够存在，首先归功于 **[dataelement 团队](https://github.com/dataelement)** 的工作 —— 他们维护的 **[DSH Desktop](https://dshdesktop.com/zh/)** 是本发行版的**宿主基线**。
 
 感谢你们：
 
